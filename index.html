@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💕 我们的情侣备忘录</title>
+<style>
+  :root {
+    --pink-100: #fff0f5; --pink-200: #ffe4ec; --pink-300: #ffc0cb;
+    --pink-400: #ffb6c1; --pink-500: #ff85a2; --pink-600: #ff69b4;
+    --pink-700: #e0559a; --white: #ffffff;
+    --shadow: 0 4px 20px rgba(255,105,180,0.15);
+    --shadow-hover: 0 8px 30px rgba(255,105,180,0.25);
+    --radius: 20px; --radius-sm: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    background: linear-gradient(135deg, #fff0f5 0%, #ffe4ec 30%, #ffd6e7 60%, #fff0f5 100%);
+    background-attachment: fixed; min-height: 100vh; color: #5a3040;
+    overflow-x: hidden; position: relative;
+  }
+  .hearts-bg { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; }
+  .heart-float { position:absolute; animation:floatUp linear infinite; opacity:0.3; font-size:1.5rem; }
+  @keyframes floatUp {
+    0% { transform:translateY(100vh) rotate(0deg) scale(0); opacity:0; }
+    10% { opacity:0.4; } 50% { opacity:0.3; } 90% { opacity:0.1; }
+    100% { transform:translateY(-10vh) rotate(360deg) scale(1.2); opacity:0; }
+  }
+  .container { max-width:920px; margin:0 auto; padding:20px; position:relative; z-index:1; }
+
+  /* Header */
+  .header { text-align:center; padding:24px 20px 10px; }
+  .header h1 { font-size:2.4rem; background:linear-gradient(135deg,#ff69b4,#ff85a2,#ff6b8a); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:4px; font-weight:800; letter-spacing:2px; }
+  .header .subtitle { font-size:0.95rem; color:#d4849b; font-weight:500; }
+
+  /* Tabs */
+  .tab-nav { display:flex; gap:4px; justify-content:center; margin:16px 0; }
+  .tab-btn { padding:10px 28px; border:none; border-radius:25px; font-size:0.95rem; font-weight:700; cursor:pointer; transition:all 0.3s; font-family:inherit; background:white; color:#c97a90; box-shadow:0 2px 8px rgba(255,105,180,0.08); }
+  .tab-btn:hover { color:#ff69b4; }
+  .tab-btn.active { background:linear-gradient(135deg,#ff85a2,#ff69b4); color:white; box-shadow:0 4px 15px rgba(255,105,180,0.3); }
+
+  /* Countdown */
+  .countdown-section { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:20px; }
+  .countdown-card { background:var(--white); border-radius:var(--radius-sm); padding:16px 20px; box-shadow:var(--shadow); text-align:center; min-width:120px; flex:1; max-width:200px; transition:transform 0.3s,box-shadow 0.3s; cursor:pointer; }
+  .countdown-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); }
+  .countdown-card .icon { font-size:1.8rem; margin-bottom:4px; }
+  .countdown-card .label { font-size:0.78rem; color:#c97a90; font-weight:600; }
+  .countdown-card .days { font-size:2rem; font-weight:800; color:#ff69b4; }
+  .countdown-card .date-str { font-size:0.7rem; color:#c9a0b0; margin-top:2px; }
+  .countdown-card.add-card { border:2px dashed #ffc0cb; background:transparent; display:flex; align-items:center; justify-content:center; }
+  .countdown-card.add-card:hover { background:#fff0f5; border-color:#ff69b4; }
+  .countdown-card.add-card .plus { font-size:2rem; color:#ffb6c1; }
+
+  /* Toolbar */
+  .toolbar { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; align-items:center; margin-bottom:18px; }
+  .btn { padding:10px 22px; border:none; border-radius:25px; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.3s; font-family:inherit; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  .btn-primary { background:linear-gradient(135deg,#ff85a2,#ff69b4); color:white; box-shadow:0 4px 15px rgba(255,105,180,0.3); }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,105,180,0.4); }
+  .btn-outline { background:white; color:#ff69b4; border:2px solid #ffb6c1; }
+  .btn-outline:hover { background:#fff0f5; border-color:#ff69b4; }
+  .btn-sm { padding:6px 14px; font-size:0.8rem; border-radius:20px; }
+  .btn-danger { background:#fff0f5; color:#e0557a; border:1px solid #ffc0cb; }
+  .btn-danger:hover { background:#ffe0e8; color:#d43f60; }
+  .btn-icon { width:36px; height:36px; padding:0; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+  .notify-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; padding:4px 10px; border-radius:12px; background:#e8f5e9; color:#388e3c; font-weight:600; }
+  .notify-badge.off { background:#fff0f5; color:#c97a90; }
+
+  .search-box { flex:1; min-width:160px; max-width:260px; position:relative; }
+  .search-box input { width:100%; padding:10px 16px 10px 38px; border:2px solid #ffd6e0; border-radius:25px; font-size:0.9rem; font-family:inherit; background:white; transition:all 0.3s; color:#5a3040; }
+  .search-box input:focus { outline:none; border-color:#ff69b4; box-shadow:0 0 0 3px rgba(255,105,180,0.1); }
+  .search-box .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:1rem; }
+
+  /* Filter chips */
+  .filter-chips { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:18px; }
+  .chip { padding:6px 16px; border-radius:20px; font-size:0.82rem; font-weight:600; cursor:pointer; border:2px solid #ffd6e0; background:white; color:#c97a90; transition:all 0.3s; font-family:inherit; }
+  .chip:hover { border-color:#ff69b4; color:#ff69b4; }
+  .chip.active { background:linear-gradient(135deg,#ff85a2,#ff69b4); color:white; border-color:transparent; }
+
+  /* Grid */
+  .memo-grid, .pref-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .card { background:white; border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); transition:transform 0.3s,box-shadow 0.3s; position:relative; overflow:hidden; animation:cardIn 0.4s ease; }
+  @keyframes cardIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .card:hover { transform:translateY(-4px); box-shadow:var(--shadow-hover); }
+  .card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; border-radius:4px 0 0 4px; }
+  .card.cat-love::before { background:#ff69b4; }
+  .card.cat-date::before { background:#ff85a2; }
+  .card.cat-anniversary::before { background:#ffb6c1; }
+  .card.cat-reminder::before { background:#ffa0c0; }
+  .card.cat-other::before { background:#ffc0cb; }
+  .card.cat-food::before { background:#ff9a76; }
+  .card.cat-movie::before { background:#a29bfe; }
+  .card.cat-music::before { background:#fd79a8; }
+  .card.cat-gift::before { background:#fdcb6e; }
+  .card.cat-travel::before { background:#55a3e8; }
+  .card.cat-pref-other::before { background:#b8a9c9; }
+
+  .card .card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .card .card-category { font-size:0.7rem; padding:3px 10px; border-radius:12px; font-weight:600; letter-spacing:1px; }
+  .cat-love .card-category { background:#fff0f5; color:#ff69b4; }
+  .cat-date .card-category { background:#fff5f0; color:#ff85a2; }
+  .cat-anniversary .card-category { background:#fff0f5; color:#e0559a; }
+  .cat-reminder .card-category { background:#fff0f8; color:#d56b90; }
+  .cat-other .card-category { background:#fff5f8; color:#c97a90; }
+  .cat-food .card-category { background:#fff3ed; color:#e07b5a; }
+  .cat-movie .card-category { background:#f0edff; color:#7c6db8; }
+  .cat-music .card-category { background:#ffedf4; color:#d45b85; }
+  .cat-gift .card-category { background:#fffbed; color:#c99a20; }
+  .cat-travel .card-category { background:#edf5ff; color:#3d7ec0; }
+  .cat-pref-other .card-category { background:#f8f5fa; color:#8a7a9a; }
+
+  .card .card-actions { display:flex; gap:2px; }
+  .card .card-actions button { background:none; border:none; cursor:pointer; font-size:1rem; padding:2px 5px; border-radius:6px; transition:background 0.2s; }
+  .card .card-actions button:hover { background:#fff0f5; }
+  .card .card-title { font-size:1.08rem; font-weight:700; margin-bottom:6px; color:#4a2830; }
+  .card .card-content { font-size:0.87rem; color:#7a5560; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+  .card .card-footer { margin-top:12px; font-size:0.73rem; color:#c9a0b0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; }
+  .card .card-img { width:100%; border-radius:10px; margin-top:10px; cursor:pointer; max-height:180px; object-fit:cover; transition:transform 0.2s; }
+  .card .card-img:hover { transform:scale(1.02); }
+  .card .alarm-indicator { display:inline-flex; align-items:center; gap:2px; font-size:0.7rem; color:#ff69b4; font-weight:600; }
+
+  /* Modal */
+  .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(90,30,50,0.35); backdrop-filter:blur(4px); z-index:100; display:flex; align-items:center; justify-content:center; animation:fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  .modal { background:white; border-radius:var(--radius); padding:28px; width:90%; max-width:520px; box-shadow:0 20px 60px rgba(255,105,180,0.2); max-height:90vh; overflow-y:auto; animation:slideUp 0.3s ease; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+  .modal h2 { font-size:1.35rem; color:#ff69b4; margin-bottom:18px; text-align:center; }
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-size:0.84rem; font-weight:600; color:#8a5a6a; margin-bottom:5px; }
+  .form-group input, .form-group textarea, .form-group select { width:100%; padding:10px 14px; border:2px solid #ffd6e0; border-radius:var(--radius-sm); font-size:0.9rem; font-family:inherit; transition:all 0.3s; background:#fffafc; color:#5a3040; resize:vertical; }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none; border-color:#ff69b4; box-shadow:0 0 0 3px rgba(255,105,180,0.08); }
+  .form-group textarea { min-height:70px; }
+  .form-row { display:flex; gap:10px; }
+  .form-row .form-group { flex:1; }
+  .form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+
+  /* Image upload */
+  .img-upload-area { border:2px dashed #ffd6e0; border-radius:var(--radius-sm); padding:20px; text-align:center; cursor:pointer; transition:all 0.3s; background:#fffafc; }
+  .img-upload-area:hover { border-color:#ff69b4; background:#fff0f5; }
+  .img-upload-area.has-img { padding:8px; }
+  .img-upload-area img { max-width:100%; max-height:160px; border-radius:8px; }
+  .img-upload-area .placeholder { color:#c9a0b0; font-size:0.85rem; }
+
+  /* Import */
+  .import-textarea { width:100%; min-height:160px; padding:14px; border:2px solid #ffd6e0; border-radius:var(--radius-sm); font-size:0.9rem; font-family:inherit; resize:vertical; background:#fffafc; color:#5a3040; line-height:1.7; }
+  .import-textarea:focus { outline:none; border-color:#ff69b4; box-shadow:0 0 0 3px rgba(255,105,180,0.08); }
+  .import-hint { font-size:0.8rem; color:#c9a0b0; margin-top:8px; line-height:1.6; }
+  .import-preview { margin-top:14px; }
+  .import-preview table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+  .import-preview th { background:#fff0f5; padding:8px 10px; text-align:left; border-radius:6px 6px 0 0; color:#8a5a6a; font-size:0.75rem; }
+  .import-preview td { padding:8px 10px; border-bottom:1px solid #ffd6e0; color:#5a3040; }
+  .import-preview .parsed-ok { color:#388e3c; }
+  .import-preview .parsed-warn { color:#e67e22; }
+
+  /* Toast */
+  .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:200; background:#5a3040; color:white; padding:12px 28px; border-radius:25px; font-weight:600; font-size:0.9rem; box-shadow:0 8px 30px rgba(0,0,0,0.15); animation:toastIn 0.3s ease, toastOut 0.3s ease 2.5s forwards; }
+  @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+  @keyframes toastOut { from { opacity:1; } to { opacity:0; transform:translateX(-50%) translateY(-20px); } }
+
+  /* Image viewer */
+  .img-viewer { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:300; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .img-viewer img { max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.3); }
+
+  .empty-state { text-align:center; padding:60px 20px; color:#d4a0b0; grid-column:1/-1; }
+  .empty-state .big-emoji { font-size:4rem; margin-bottom:12px; }
+  .empty-state p { font-size:0.95rem; line-height:1.8; }
+
+  .hidden { display:none !important; }
+
+  /* Dynamic effects */
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.08); } }
+  @keyframes bounce { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-10px); } 60% { transform:translateY(-3px); } }
+  @keyframes shimmer { 0% { background-position:-200% center; } 100% { background-position:200% center; } }
+  @keyframes sparkle { 0% { opacity:1; transform:translate(0,0) scale(1); } 100% { opacity:0; transform:translate(var(--sx),var(--sy)) scale(0); } }
+  @keyframes ripple { to { transform:scale(4); opacity:0; } }
+  @keyframes wiggle { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-3deg); } 75% { transform:rotate(3deg); } }
+  @keyframes popIn { 0% { transform:scale(0); opacity:0; } 70% { transform:scale(1.15); } 100% { transform:scale(1); opacity:1; } }
+  @keyframes slideInLeft { from { opacity:0; transform:translateX(-30px); } to { opacity:1; transform:translateX(0); } }
+
+  .pulse { animation:pulse 2s ease-in-out infinite; }
+  .bounce-hover:hover { animation:bounce 0.6s ease; }
+  .wiggle-hover:hover { animation:wiggle 0.4s ease; }
+  .pop-in { animation:popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275); }
+
+  .shimmer-text {
+    background:linear-gradient(90deg,#ff69b4 0%,#ffb6c1 20%,#fff 40%,#ffb6c1 60%,#ff69b4 80%);
+    background-size:200% auto; -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; animation:shimmer 3s linear infinite;
+  }
+
+  .ripple-effect { position:absolute; border-radius:50%; background:rgba(255,255,255,0.5); transform:scale(0); animation:ripple 0.6s ease-out; pointer-events:none; }
+
+  .sparkle-particle { position:fixed; pointer-events:none; z-index:250; font-size:1.2rem; animation:sparkle 0.8s ease-out forwards; }
+
+  .card { transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275),box-shadow 0.3s; }
+  .card:nth-child(1) { animation-delay:0s; }
+  .card:nth-child(2) { animation-delay:0.05s; }
+  .card:nth-child(3) { animation-delay:0.1s; }
+  .card:nth-child(4) { animation-delay:0.15s; }
+  .card:nth-child(5) { animation-delay:0.2s; }
+  .card:nth-child(6) { animation-delay:0.25s; }
+  .card:nth-child(n+7) { animation-delay:0.3s; }
+
+  .countdown-card { transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275),box-shadow 0.3s; }
+  .countdown-card:hover .icon { animation:bounce 0.6s ease; display:inline-block; }
+  .countdown-card.today-glow { box-shadow:0 0 20px rgba(255,105,180,0.4),0 0 40px rgba(255,105,180,0.15); }
+  .countdown-card.today-glow .days { animation:pulse 1.5s ease-in-out infinite; }
+
+  .btn { position:relative; overflow:hidden; }
+  .btn:active { transform:scale(0.95) !important; }
+  .btn-primary { transition:all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+
+  .notify-badge { transition:all 0.3s; }
+  .notify-badge:not(.off) { animation:pulse 3s ease-in-out infinite; }
+
+  .tab-btn { position:relative; transition:all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+  .tab-btn.active { animation:popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275); }
+
+  .img-viewer { animation:fadeIn 0.2s ease; }
+  .img-viewer img { animation:popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+
+  @media (max-width:600px) {
+    .header h1 { font-size:1.6rem; }
+    .memo-grid, .pref-grid { grid-template-columns:1fr; }
+    .countdown-section { flex-direction:column; align-items:center; }
+    .countdown-card { max-width:100%; width:100%; }
+    .toolbar { flex-direction:column; }
+    .search-box { max-width:100%; }
+    .form-row { flex-direction:column; gap:0; }
+    .tab-btn { padding:8px 20px; font-size:0.85rem; }
+  }
+</style>
+</head>
+<body>
+<div class="hearts-bg" id="heartsBg"></div>
+
+<div class="container">
+  <div class="header">
+    <h1 class="shimmer-text">💕 我们的备忘录</h1>
+    <p class="subtitle">记录属于我们的每一个甜蜜瞬间 ✨</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('memo')">📝 备忘录</button>
+    <button class="tab-btn" onclick="switchTab('pref')">💝 喜好栏</button>
+  </div>
+
+  <!-- ============ MEMO TAB ============ -->
+  <div id="tabMemo">
+    <div class="countdown-section" id="countdownSection"></div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索备忘录..." oninput="renderMemos()">
+      </div>
+      <button class="btn btn-primary" onclick="openMemoModal()">➕ 新建备忘</button>
+      <button class="btn btn-outline" onclick="openImportModal()">📥 快速导入</button>
+      <button class="btn btn-outline btn-sm" onclick="exportData()">📤 导出</button>
+      <span id="notifyStatus" class="notify-badge off" style="cursor:pointer" onclick="toggleNotification()" title="点击开启/关闭桌面提醒">🔕 提醒关闭</span>
+    </div>
+
+    <div class="filter-chips">
+      <button class="chip active" data-cat="all" onclick="setFilter('all',this)">🌟 全部</button>
+      <button class="chip" data-cat="love" onclick="setFilter('love',this)">💌 情话</button>
+      <button class="chip" data-cat="date" onclick="setFilter('date',this)">🌹 约会</button>
+      <button class="chip" data-cat="anniversary" onclick="setFilter('anniversary',this)">🎀 纪念日</button>
+      <button class="chip" data-cat="reminder" onclick="setFilter('reminder',this)">⏰ 提醒</button>
+      <button class="chip" data-cat="other" onclick="setFilter('other',this)">📝 其他</button>
+    </div>
+
+    <div class="memo-grid" id="memoGrid">
+      <div class="empty-state"><div class="big-emoji">💝</div><p>还没有备忘录哦～<br>点击「新建备忘」记录你们的甜蜜吧！</p></div>
+    </div>
+  </div>
+
+  <!-- ============ PREF TAB ============ -->
+  <div id="tabPref" class="hidden">
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openPrefModal()">➕ 添加喜好</button>
+      <span style="font-size:0.85rem;color:#c9a0b0;">记录你们共同喜欢的 🎀</span>
+    </div>
+    <div class="filter-chips">
+      <button class="chip active" data-pcat="all" onclick="setPrefFilter('all',this)">🌟 全部</button>
+      <button class="chip" data-pcat="food" onclick="setPrefFilter('food',this)">🍔 美食</button>
+      <button class="chip" data-pcat="movie" onclick="setPrefFilter('movie',this)">🎬 电影</button>
+      <button class="chip" data-pcat="music" onclick="setPrefFilter('music',this)">🎵 音乐</button>
+      <button class="chip" data-pcat="gift" onclick="setPrefFilter('gift',this)">🎁 礼物灵感</button>
+      <button class="chip" data-pcat="travel" onclick="setPrefFilter('travel',this)">✈️ 旅行</button>
+      <button class="chip" data-pcat="pref-other" onclick="setPrefFilter('pref-other',this)">⭐ 其他</button>
+    </div>
+    <div class="pref-grid" id="prefGrid">
+      <div class="empty-state"><div class="big-emoji">💝</div><p>还没有记录喜好哦～<br>记录你们的共同爱好，更了解彼此！</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MEMO MODAL ============ -->
+<div class="modal-overlay" id="memoModal" style="display:none">
+  <div class="modal">
+    <h2 id="modalTitle">✨ 新建备忘</h2>
+    <div class="form-group"><label>📌 标题</label><input type="text" id="memoTitle" placeholder="比如：周末去看电影 🎬"></div>
+    <div class="form-group"><label>💬 内容</label><textarea id="memoContent" placeholder="写下你想记住的事情..."></textarea></div>
+    <div class="form-group">
+      <label>🖼️ 图片（可选）</label>
+      <div class="img-upload-area" id="imgUploadArea" onclick="document.getElementById('imgInput').click()">
+        <div class="placeholder" id="imgPlaceholder">📷 点击上传图片 或 直接粘贴</div>
+        <img id="imgPreview" style="display:none">
+      </div>
+      <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+      <button class="btn btn-sm btn-outline" style="margin-top:6px;" id="imgRemoveBtn" onclick="removeImage();event.stopPropagation();" hidden>🗑️ 移除图片</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>🏷️ 分类</label>
+        <select id="memoCategory">
+          <option value="love">💌 情话</option><option value="date">🌹 约会</option>
+          <option value="anniversary">🎀 纪念日</option><option value="reminder">⏰ 提醒</option>
+          <option value="other">📝 其他</option>
+        </select>
+      </div>
+      <div class="form-group"><label>📅 日期</label><input type="date" id="memoDate"></div>
+      <div class="form-group"><label>⏰ 提醒时间</label><input type="time" id="memoTime"></div>
+    </div>
+    <input type="hidden" id="memoId"><input type="hidden" id="memoImage" value="">
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeMemoModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveMemo()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ IMPORT MODAL ============ -->
+<div class="modal-overlay" id="importModal" style="display:none">
+  <div class="modal">
+    <h2>📥 快速导入</h2>
+    <p style="font-size:0.85rem;color:#8a5a6a;margin-bottom:10px;">直接描述你想记录的事情，每行一条，系统会自动识别日期和分类 👇</p>
+    <textarea class="import-textarea" id="importTextarea" placeholder="比如这样写：
+
+明天下午3点去接她下班
+下周五是我们的恋爱纪念日，记得买花
+3月8号一起去吃海底捞
+每天睡觉前要说晚安
+别忘了下个月15号她的生日
+周末约会去看新海诚的新电影"></textarea>
+    <div class="import-hint">
+      💡 支持自然语言：<b>明天/后天/下周五/3月8号/下个月15号</b> 等日期表达<br>
+      🔍 关键词识别：纪念日→纪念日分类，约会/一起去→约会，记得/别忘了→提醒
+    </div>
+    <div class="import-preview" id="importPreview" style="display:none"></div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeImportModal()">取消</button>
+      <button class="btn btn-outline btn-sm" onclick="parseImportText()">🔍 预览识别结果</button>
+      <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()" hidden>📥 确认导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ COUNTDOWN MODAL ============ -->
+<div class="modal-overlay" id="countdownModal" style="display:none">
+  <div class="modal">
+    <h2 id="countdownModalTitle">💕 添加纪念日</h2>
+    <div class="form-group"><label>🎯 名称</label><input type="text" id="countdownName" placeholder="比如：恋爱纪念日 💕"></div>
+    <div class="form-group"><label>📅 日期</label><input type="date" id="countdownDate"></div>
+    <input type="hidden" id="countdownId">
+    <div class="form-actions">
+      <button class="btn btn-outline btn-danger btn-sm" id="countdownDeleteBtn" style="display:none;margin-right:auto;" onclick="deleteCountdown()">🗑️ 删除</button>
+      <button class="btn btn-outline" onclick="closeCountdownModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveCountdown()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PREF MODAL ============ -->
+<div class="modal-overlay" id="prefModal" style="display:none">
+  <div class="modal">
+    <h2 id="prefModalTitle">💝 添加喜好</h2>
+    <div class="form-group"><label>📌 名称</label><input type="text" id="prefName" placeholder="比如：海底捞火锅 🍲"></div>
+    <div class="form-group"><label>💬 备注（可选）</label><textarea id="prefNote" placeholder="比如：她喜欢吃番茄锅..."></textarea></div>
+    <div class="form-group"><label>🏷️ 分类</label>
+      <select id="prefCategory">
+        <option value="food">🍔 美食</option><option value="movie">🎬 电影</option>
+        <option value="music">🎵 音乐</option><option value="gift">🎁 礼物灵感</option>
+        <option value="travel">✈️ 旅行</option><option value="pref-other">⭐ 其他</option>
+      </select>
+    </div>
+    <input type="hidden" id="prefId">
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closePrefModal()">取消</button>
+      <button class="btn btn-primary" onclick="savePref()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA STORE ====================
+const K_MEMOS = 'cp_memos2', K_COUNTDOWNS = 'cp_cds2', K_PREFS = 'cp_prefs2', K_NOTIFY = 'cp_notify';
+
+function load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
+function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+let memos = load(K_MEMOS, []);
+let countdowns = load(K_COUNTDOWNS, []);
+let preferences = load(K_PREFS, []);
+let notifyEnabled = load(K_NOTIFY, false);
+let currentFilter = 'all', currentPrefFilter = 'all';
+let parsedImportItems = [];
+
+// ==================== FLOATING HEARTS ====================
+(function(){
+  const bg = document.getElementById('heartsBg');
+  const hearts = ['💕','💖','💗','💝','💘','🩷','🌸','✨','💓'];
+  for(let i=0;i<25;i++){
+    const el=document.createElement('span');
+    el.className='heart-float';
+    el.textContent=hearts[Math.floor(Math.random()*hearts.length)];
+    el.style.left=Math.random()*100+'%';
+    el.style.animationDuration=(8+Math.random()*18)+'s';
+    el.style.animationDelay=Math.random()*14+'s';
+    el.style.fontSize=(1+Math.random()*2.5)+'rem';
+    bg.appendChild(el);
+  }
+})();
+
+// ==================== DYNAMIC EFFECTS ====================
+// Button ripple
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('.btn');
+  if(!btn)return;
+  const ripple=document.createElement('span');
+  ripple.className='ripple-effect';
+  const size=Math.max(btn.offsetWidth,btn.offsetHeight);
+  ripple.style.width=ripple.style.height=size+'px';
+  const rect=btn.getBoundingClientRect();
+  ripple.style.left=(e.clientX-rect.left-size/2)+'px';
+  ripple.style.top=(e.clientY-rect.top-size/2)+'px';
+  btn.appendChild(ripple);
+  setTimeout(()=>ripple.remove(),600);
+});
+
+// Sparkle burst
+function sparkleBurst(x,y,count=12){
+  const emojis=['✨','💕','💖','💗','💝','🌸','🩷','⭐','💫','🌟'];
+  for(let i=0;i<count;i++){
+    const el=document.createElement('span');
+    el.className='sparkle-particle';
+    el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    el.style.left=x+'px';
+    el.style.top=y+'px';
+    el.style.setProperty('--sx',(Math.random()-0.5)*180+'px');
+    el.style.setProperty('--sy',-(Math.random()*100+40)+'px');
+    el.style.animationDuration=(0.5+Math.random()*0.8)+'s';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1000);
+  }
+}
+
+// Sparkle on Save buttons
+document.addEventListener('click',function(e){
+  if(e.target.matches('[onclick*="saveMemo"]')||e.target.matches('[onclick*="confirmImport"]')){
+    sparkleBurst(e.clientX,e.clientY,15);
+  }
+  if(e.target.matches('[onclick*="savePref"]')){
+    sparkleBurst(e.clientX,e.clientY,10);
+  }
+});
+
+// Random background sparkles (occasional subtle sparkles)
+setInterval(()=>{
+  if(document.hidden)return;
+  const x=Math.random()*window.innerWidth;
+  const y=Math.random()*window.innerHeight*0.6;
+  const el=document.createElement('span');
+  el.className='sparkle-particle';
+  el.textContent='✨';
+  el.style.left=x+'px';
+  el.style.top=y+'px';
+  el.style.fontSize='0.8rem';
+  el.style.setProperty('--sx','0px');
+  el.style.setProperty('--sy','-40px');
+  el.style.animationDuration='1.5s';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1600);
+},4000);
+
+// ==================== TOAST ====================
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if(existing) existing.remove();
+  const t = document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+// ==================== TABS ====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  if(tab==='memo'){
+    document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+    document.getElementById('tabMemo').classList.remove('hidden');
+    document.getElementById('tabPref').classList.add('hidden');
+  } else {
+    document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+    document.getElementById('tabMemo').classList.add('hidden');
+    document.getElementById('tabPref').classList.remove('hidden');
+    renderPrefs();
+  }
+}
+
+// ==================== NOTIFICATIONS ====================
+function updateNotifyBadge() {
+  const badge = document.getElementById('notifyStatus');
+  if(notifyEnabled){
+    badge.className='notify-badge';
+    badge.innerHTML='🔔 提醒开启';
+  } else {
+    badge.className='notify-badge off';
+    badge.innerHTML='🔕 提醒关闭';
+  }
+}
+updateNotifyBadge();
+
+async function toggleNotification() {
+  if(!notifyEnabled){
+    if(!('Notification' in window)){
+      showToast('⚠️ 你的浏览器不支持桌面通知');
+      return;
+    }
+    if(Notification.permission==='denied'){
+      showToast('⚠️ 通知权限已被拒绝，请在浏览器设置中修改');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if(perm==='granted'){
+      notifyEnabled = true;
+      save(K_NOTIFY, true);
+      updateNotifyBadge();
+      showToast('🔔 桌面提醒已开启！到时间会弹窗提醒你');
+    } else {
+      showToast('⚠️ 需要允许通知权限才能使用提醒功能');
+    }
+  } else {
+    notifyEnabled = false;
+    save(K_NOTIFY, false);
+    updateNotifyBadge();
+    showToast('🔕 桌面提醒已关闭');
+  }
+}
+
+function checkNotifications() {
+  if(!notifyEnabled || Notification.permission!=='granted') return;
+  const now = new Date();
+  const nowStr = now.toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
+
+  memos.forEach((m,i)=>{
+    if(m.notified) return;
+    if(!m.date) return;
+    const targetTime = m.time || '09:00';
+    const targetStr = m.date + 'T' + targetTime;
+    if(targetStr <= nowStr){
+      // Fire notification
+      const catEmoji = {love:'💌',date:'🌹',anniversary:'🎀',reminder:'⏰',other:'📝'};
+      new Notification(`💕 备忘录提醒`,{
+        body: `${catEmoji[m.category]||'📝'} ${m.title}\n${m.content||''}`.substring(0,200),
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💕</text></svg>',
+        requireInteraction: true,
+        tag: 'memo-'+i
+      });
+      memos[i].notified = true;
+      save(K_MEMOS, memos);
+    }
+  });
+}
+
+// Check every 30 seconds, and on load
+setInterval(checkNotifications, 30000);
+setTimeout(checkNotifications, 2000);
+
+// ==================== COUNTDOWNS ====================
+function renderCountdowns() {
+  const section = document.getElementById('countdownSection');
+  const today = new Date(); today.setHours(0,0,0,0);
+  let html='';
+  countdowns.forEach((cd,idx)=>{
+    const target = new Date(cd.date); target.setHours(0,0,0,0);
+    const diff = Math.ceil((target-today)/(86400000));
+    let daysText, emoji;
+    if(diff>0){daysText=diff;emoji='⏳';}
+    else if(diff===0){daysText='今天';emoji='🎉';}
+    else{daysText=Math.abs(diff);emoji='💫';}
+    html+=`<div class="countdown-card${diff===0?' today-glow':''}" onclick="openCountdownModal(${idx})" title="点击编辑"><div class="icon${diff===0?' pulse':''}">${emoji}</div><div class="label">${cd.name}</div><div class="days bounce-hover">${daysText}</div><div class="date-str">${diff>0?'天后':diff<0?'天前':''} · ${cd.date}</div></div>`;
+  });
+  html+=`<div class="countdown-card add-card" onclick="openCountdownModal()"><div class="plus">➕</div><div class="label" style="margin-top:4px">添加纪念日</div></div>`;
+  section.innerHTML=html;
+}
+
+function openCountdownModal(idx){
+  const m=document.getElementById('countdownModal');
+  const t=document.getElementById('countdownModalTitle');
+  if(idx!==undefined&&countdowns[idx]){
+    t.textContent='✏️ 编辑纪念日';
+    document.getElementById('countdownName').value=countdowns[idx].name;
+    document.getElementById('countdownDate').value=countdowns[idx].date;
+    document.getElementById('countdownId').value=idx;
+    document.getElementById('countdownDeleteBtn').style.display='inline-block';
+  }else{
+    t.textContent='💕 添加纪念日';
+    document.getElementById('countdownName').value='';
+    document.getElementById('countdownDate').value='';
+    document.getElementById('countdownId').value='';
+    document.getElementById('countdownDeleteBtn').style.display='none';
+  }
+  m.style.display='flex';
+}
+function closeCountdownModal(){document.getElementById('countdownModal').style.display='none';}
+function saveCountdown(){
+  const name=document.getElementById('countdownName').value.trim();
+  const date=document.getElementById('countdownDate').value;
+  const id=document.getElementById('countdownId').value;
+  if(!name||!date){showToast('⚠️ 请填写名称和日期');return;}
+  if(id!==''){countdowns[parseInt(id)]={name,date};}
+  else{countdowns.push({name,date});}
+  countdowns.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  save(K_COUNTDOWNS,countdowns);
+  renderCountdowns();
+  closeCountdownModal();
+  showToast('💕 纪念日已保存');
+}
+function deleteCountdown(){
+  const id=parseInt(document.getElementById('countdownId').value);
+  if(isNaN(id)||!countdowns[id])return;
+  countdowns.splice(id,1);
+  save(K_COUNTDOWNS,countdowns);
+  renderCountdowns();
+  closeCountdownModal();
+  showToast('🗑️ 纪念日已删除');
+}
+
+// ==================== MEMOS ====================
+function setFilter(cat,btn){
+  currentFilter=cat;
+  document.querySelectorAll('#tabMemo .filter-chips .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderMemos();
+}
+
+function renderMemos(){
+  const grid=document.getElementById('memoGrid');
+  const search=document.getElementById('searchInput').value.toLowerCase();
+  let filtered=memos;
+  if(currentFilter!=='all') filtered=filtered.filter(m=>m.category===currentFilter);
+  if(search) filtered=filtered.filter(m=>m.title.toLowerCase().includes(search)||m.content.toLowerCase().includes(search));
+
+  if(filtered.length===0){
+    grid.innerHTML=`<div class="empty-state"><div class="big-emoji">💝</div><p>${search?'没有匹配的备忘录 🔍':'还没有备忘录哦～<br>点击「新建备忘」记录你们的甜蜜吧！'}</p></div>`;
+    return;
+  }
+  const catNames={love:'💌 情话',date:'🌹 约会',anniversary:'🎀 纪念日',reminder:'⏰ 提醒',other:'📝 其他'};
+  grid.innerHTML=filtered.map(m=>{
+    const origIdx=memos.indexOf(m);
+    const dateStr=m.date?`📅 ${m.date}`:'';
+    const timeStr=m.time?`⏰ ${m.time}`:'';
+    const alarmHtml=(m.date&&m.time)?`<span class="alarm-indicator">⏰ ${m.date} ${m.time}</span>`:(m.date?`<span>📅 ${m.date}</span>`:'');
+    const imgHtml=m.image?`<img class="card-img" src="${m.image}" onclick="viewImage(event,'${m.image}')" loading="lazy">`:'';
+    const createdStr=m.createdAt?new Date(m.createdAt).toLocaleDateString('zh-CN'):'';
+    return `<div class="card cat-${m.category}">
+      <div class="card-header"><span class="card-category">${catNames[m.category]||m.category}</span>
+        <div class="card-actions">
+          <button onclick="openMemoModal(${origIdx})" title="编辑">✏️</button>
+          <button onclick="deleteMemo(${origIdx})" title="删除">🗑️</button>
+        </div>
+      </div>
+      <div class="card-title">${escHtml(m.title)}</div>
+      <div class="card-content">${escHtml(m.content)}</div>
+      ${imgHtml}
+      <div class="card-footer">${alarmHtml}<span>${createdStr}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function openMemoModal(idx){
+  const modal=document.getElementById('memoModal');
+  const titleEl=document.getElementById('modalTitle');
+  document.getElementById('memoId').value='';
+  document.getElementById('memoImage').value='';
+  document.getElementById('imgPreview').style.display='none';
+  document.getElementById('imgPlaceholder').style.display='';
+  document.getElementById('imgRemoveBtn').hidden=true;
+
+  if(idx!==undefined&&memos[idx]){
+    titleEl.textContent='✏️ 编辑备忘';
+    document.getElementById('memoTitle').value=memos[idx].title;
+    document.getElementById('memoContent').value=memos[idx].content;
+    document.getElementById('memoCategory').value=memos[idx].category;
+    document.getElementById('memoDate').value=memos[idx].date||'';
+    document.getElementById('memoTime').value=memos[idx].time||'';
+    document.getElementById('memoId').value=idx;
+    if(memos[idx].image){
+      document.getElementById('memoImage').value=memos[idx].image;
+      document.getElementById('imgPreview').src=memos[idx].image;
+      document.getElementById('imgPreview').style.display='block';
+      document.getElementById('imgPlaceholder').style.display='none';
+      document.getElementById('imgRemoveBtn').hidden=false;
+    }
+  }else{
+    titleEl.textContent='✨ 新建备忘';
+    document.getElementById('memoTitle').value='';
+    document.getElementById('memoContent').value='';
+    document.getElementById('memoCategory').value='love';
+    document.getElementById('memoDate').value='';
+    document.getElementById('memoTime').value='';
+  }
+  modal.style.display='flex';
+}
+
+function closeMemoModal(){document.getElementById('memoModal').style.display='none';}
+
+function saveMemo(){
+  const title=document.getElementById('memoTitle').value.trim();
+  const content=document.getElementById('memoContent').value.trim();
+  const category=document.getElementById('memoCategory').value;
+  const date=document.getElementById('memoDate').value;
+  const time=document.getElementById('memoTime').value;
+  const image=document.getElementById('memoImage').value;
+  const id=document.getElementById('memoId').value;
+  if(!title){showToast('⚠️ 请填写标题');return;}
+
+  const memo={title,content,category,date,time,image,notified:false,createdAt:new Date().toISOString()};
+  if(id!==''){
+    memo.createdAt=memos[parseInt(id)].createdAt;
+    memo.notified=memos[parseInt(id)].notified;
+    memos[parseInt(id)]=memo;
+  }else{
+    memos.unshift(memo);
+  }
+  save(K_MEMOS,memos);
+  renderMemos();
+  closeMemoModal();
+  showToast(id!==''?'✏️ 备忘已更新':'💕 备忘已添加');
+}
+
+function deleteMemo(idx){
+  if(!confirm('确定删除这条备忘吗？'))return;
+  memos.splice(idx,1);
+  save(K_MEMOS,memos);
+  renderMemos();
+  showToast('🗑️ 备忘已删除');
+}
+
+// ==================== IMAGE UPLOAD ====================
+function handleImageUpload(input){
+  const file=input.files[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/')){showToast('⚠️ 请选择图片文件');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    resizeAndStore(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function resizeAndStore(dataUrl){
+  const img=new Image();
+  img.onload=function(){
+    const maxW=800;
+    let w=img.width,h=img.height;
+    if(w>maxW){h=Math.round(h*(maxW/w));w=maxW;}
+    const canvas=document.createElement('canvas');
+    canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(img,0,0,w,h);
+    const resized=canvas.toDataURL('image/jpeg',0.75);
+    document.getElementById('memoImage').value=resized;
+    document.getElementById('imgPreview').src=resized;
+    document.getElementById('imgPreview').style.display='block';
+    document.getElementById('imgPlaceholder').style.display='none';
+    document.getElementById('imgRemoveBtn').hidden=false;
+  };
+  img.src=dataUrl;
+}
+
+function removeImage(){
+  document.getElementById('memoImage').value='';
+  document.getElementById('imgPreview').style.display='none';
+  document.getElementById('imgPlaceholder').style.display='';
+  document.getElementById('imgRemoveBtn').hidden=true;
+  document.getElementById('imgInput').value='';
+}
+
+// Paste image support
+document.addEventListener('paste',function(e){
+  const modal=document.getElementById('memoModal');
+  if(modal.style.display!=='flex')return;
+  const items=e.clipboardData.items;
+  for(const item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      const blob=item.getAsFile();
+      const reader=new FileReader();
+      reader.onload=function(ev){resizeAndStore(ev.target.result);};
+      reader.readAsDataURL(blob);
+      break;
+    }
+  }
+});
+
+// Image viewer
+function viewImage(e,src){
+  e.stopPropagation();
+  const viewer=document.createElement('div');
+  viewer.className='img-viewer';
+  viewer.innerHTML=`<img src="${src}">`;
+  viewer.onclick=function(){viewer.remove();};
+  document.body.appendChild(viewer);
+}
+
+// ==================== IMPORT / EXPORT ====================
+function openImportModal(){
+  document.getElementById('importModal').style.display='flex';
+  document.getElementById('importTextarea').value='';
+  document.getElementById('importPreview').style.display='none';
+  document.getElementById('importConfirmBtn').hidden=true;
+  parsedImportItems=[];
+}
+function closeImportModal(){document.getElementById('importModal').style.display='none';}
+
+function parseImportText(){
+  const raw=document.getElementById('importTextarea').value.trim();
+  if(!raw){showToast('⚠️ 请输入内容');return;}
+  const lines=raw.split(/[\n\r]+/).filter(l=>l.trim());
+  parsedImportItems=lines.map(line=>parseLine(line.trim()));
+
+  const catNames={love:'💌 情话',date:'🌹 约会',anniversary:'🎀 纪念日',reminder:'⏰ 提醒',other:'📝 其他'};
+  let html=`<table><thead><tr><th>标题</th><th>日期</th><th>时间</th><th>分类</th></tr></thead><tbody>`;
+  parsedImportItems.forEach(item=>{
+    const dateOk=item.date?'parsed-ok':'parsed-warn';
+    html+=`<tr><td>${escHtml(item.title)}</td><td class="${dateOk}">${item.date||'未识别'}</td><td>${item.time||'默认9:00'}</td><td>${catNames[item.category]}</td></tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('importPreview').innerHTML=html;
+  document.getElementById('importPreview').style.display='block';
+  document.getElementById('importConfirmBtn').hidden=false;
+  showToast(`🔍 识别到 ${parsedImportItems.length} 条备忘，请确认后点击导入`);
+}
+
+function confirmImport(){
+  const now=new Date().toISOString();
+  let count=0;
+  parsedImportItems.forEach(item=>{
+    if(item.title){
+      memos.unshift({title:item.title,content:item.content||'',category:item.category,date:item.date,time:item.time||'',image:'',notified:false,createdAt:now});
+      count++;
+    }
+  });
+  save(K_MEMOS,memos);
+  renderMemos();
+  closeImportModal();
+  showToast(`📥 成功导入 ${count} 条备忘`);
+}
+
+function parseLine(line){
+  let title=line;
+  let content='';
+  let date='';
+  let time='';
+  let category='other';
+
+  // Split title / content by common separators
+  const sepMatch=line.match(/^(.+?)[：:——\-]\s*(.+)$/);
+  if(sepMatch){title=sepMatch[1].trim();content=sepMatch[2].trim();}
+
+  // Extract date patterns
+  const today=new Date();today.setHours(0,0,0,0);
+  let targetDate=null;
+
+  // Full date: 2024年6月15日 / 2024年6月15号 / 2024-06-15
+  let m=line.match(/(\d{4})[年\-\/](\d{1,2})[月\-\/](\d{1,2})[日号]?/);
+  if(m){targetDate=new Date(parseInt(m[1]),parseInt(m[2])-1,parseInt(m[3]));}
+
+  // Next month: 下个月15号 / 下个月15日
+  if(!targetDate){
+    m=line.match(/下个?月(\d{1,2})[号日]/);
+    if(m){
+      targetDate=new Date(today.getFullYear(),today.getMonth()+1,parseInt(m[1]));
+      if(targetDate<today) targetDate.setMonth(targetDate.getMonth()+1);
+    }
+  }
+
+  // MM/DD: 3月8号 / 3月8日 / 6-15
+  if(!targetDate){
+    m=line.match(/(\d{1,2})[月\-\/](\d{1,2})[号日]?/);
+    if(m){
+      targetDate=new Date(today.getFullYear(),parseInt(m[1])-1,parseInt(m[2]));
+      if(targetDate<today) targetDate.setFullYear(targetDate.getFullYear()+1);
+    }
+  }
+
+  // Relative days
+  if(!targetDate){
+    if(/明天/.test(line)){targetDate=new Date(today);targetDate.setDate(targetDate.getDate()+1);}
+    else if(/后天/.test(line)){targetDate=new Date(today);targetDate.setDate(targetDate.getDate()+2);}
+    else if(/大后天/.test(line)){targetDate=new Date(today);targetDate.setDate(targetDate.getDate()+3);}
+  }
+
+  // Weekday: 下周一 / 下周三 / 周一
+  if(!targetDate){
+    const weekMap={一:1,二:2,三:3,四:4,五:5,六:6,日:0,天:0};
+    m=line.match(/(下?周)([一二三四五六日天])/);
+    if(m){
+      const isNext=/^下/.test(m[1]);
+      const targetDay=weekMap[m[2]];
+      targetDate=new Date(today);
+      let diff=targetDay-targetDate.getDay();
+      if(isNext) diff+=7;
+      if(diff<=0) diff+=7;
+      targetDate.setDate(targetDate.getDate()+diff);
+    }
+  }
+
+  // Today
+  if(!targetDate&&/今天|今晚/.test(line)){
+    targetDate=new Date(today);
+  }
+
+  if(targetDate){
+    date=targetDate.toISOString().slice(0,10);
+  }
+
+  // Extract time
+  let hour=null,minute=0;
+  // 下午3点 / 晚上8点 / 早上9点
+  if(m=line.match(/早上(\d{1,2})点/)){hour=parseInt(m[1]);}
+  else if(m=line.match(/上午(\d{1,2})点/)){hour=parseInt(m[1]);}
+  else if(m=line.match(/中午(\d{1,2})?点?/)){hour=12;}
+  else if(m=line.match(/下午(\d{1,2})点/)){hour=parseInt(m[1])+12;}
+  else if(m=line.match(/晚上(\d{1,2})点/)){hour=parseInt(m[1])+12;if(hour===12)hour=20;}
+  else if(m=line.match(/(\d{1,2}):(\d{2})/)){hour=parseInt(m[1]);minute=parseInt(m[2]);}
+  // 3点
+  else if(m=line.match(/(\d{1,2})点/)){hour=parseInt(m[1]);if(hour<8)hour+=12;}
+
+  if(hour!==null){
+    if(hour===12){} // noon
+    else if(hour>23) hour=23;
+    time=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+  }
+
+  // Category detection
+  if(/纪念日|周年|纪念/.test(line)) category='anniversary';
+  else if(/约会|见面|一起|看电影|吃饭|逛|出去玩|约会|聚/.test(line)&&!/记得|别忘了/.test(line)) category='date';
+  else if(/情话|爱你|喜欢|想你|爱意|甜蜜/.test(line)) category='love';
+  else if(/记得|别忘了|提醒|别忘了|不要忘/.test(line)) category='reminder';
+
+  // Clean title of date/time noise
+  title=title.replace(/明天|后天|大后天|今天|今晚|下个?周[一二三四五六日天]/g,'').trim();
+  title=title.replace(/下个?月\d{1,2}[号日]/g,'').trim();
+  title=title.replace(/\d{4}[年\-\/]\d{1,2}[月\-\/]\d{1,2}[日号]?/g,'').trim();
+  title=title.replace(/\d{1,2}[月\-\/]\d{1,2}[号日]?/g,'').trim();
+  title=title.replace(/[早上下中]午\d{1,2}点|晚[上中]\d{1,2}点|\d{1,2}点/g,'').trim();
+  title=title.replace(/\d{1,2}:\d{2}/g,'').trim();
+  title=title.replace(/记得|别忘了/g,'').trim();
+
+  if(!title) title=line.substring(0,30);
+  if(!content&&title!==line) content=line;
+
+  return {title,content,date,time,category};
+}
+
+function exportData(){
+  const exportObj={
+    memos:memos.map(m=>({title:m.title,content:m.content,category:m.category,date:m.date||'',time:m.time||'',image:m.image||''})),
+    countdowns,
+    preferences
+  };
+  const blob=new Blob([JSON.stringify(exportObj,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='我们的备忘录_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📤 导出成功（含备忘、纪念日、喜好）');
+}
+
+// ==================== PREFERENCES ====================
+function setPrefFilter(cat,btn){
+  currentPrefFilter=cat;
+  document.querySelectorAll('#tabPref .filter-chips .chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderPrefs();
+}
+
+function renderPrefs(){
+  const grid=document.getElementById('prefGrid');
+  let filtered=preferences;
+  if(currentPrefFilter!=='all') filtered=filtered.filter(p=>p.category===currentPrefFilter);
+  if(filtered.length===0){
+    grid.innerHTML=`<div class="empty-state"><div class="big-emoji">💝</div><p>还没有记录喜好哦～<br>记录你们的共同爱好，更了解彼此！</p></div>`;
+    return;
+  }
+  const catNames={food:'🍔 美食',movie:'🎬 电影',music:'🎵 音乐',gift:'🎁 礼物灵感',travel:'✈️ 旅行','pref-other':'⭐ 其他'};
+  grid.innerHTML=filtered.map(p=>{
+    const idx=preferences.indexOf(p);
+    return `<div class="card cat-${p.category}">
+      <div class="card-header"><span class="card-category">${catNames[p.category]||p.category}</span>
+        <div class="card-actions">
+          <button onclick="openPrefModal(${idx})" title="编辑">✏️</button>
+          <button onclick="deletePref(${idx})" title="删除">🗑️</button>
+        </div>
+      </div>
+      <div class="card-title">${escHtml(p.name)}</div>
+      ${p.note?`<div class="card-content">${escHtml(p.note)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openPrefModal(idx){
+  const modal=document.getElementById('prefModal');
+  const titleEl=document.getElementById('prefModalTitle');
+  if(idx!==undefined&&preferences[idx]){
+    titleEl.textContent='✏️ 编辑喜好';
+    document.getElementById('prefName').value=preferences[idx].name;
+    document.getElementById('prefNote').value=preferences[idx].note||'';
+    document.getElementById('prefCategory').value=preferences[idx].category;
+    document.getElementById('prefId').value=idx;
+  }else{
+    titleEl.textContent='💝 添加喜好';
+    document.getElementById('prefName').value='';
+    document.getElementById('prefNote').value='';
+    document.getElementById('prefCategory').value='food';
+    document.getElementById('prefId').value='';
+  }
+  modal.style.display='flex';
+}
+
+function closePrefModal(){document.getElementById('prefModal').style.display='none';}
+
+function savePref(){
+  const name=document.getElementById('prefName').value.trim();
+  const note=document.getElementById('prefNote').value.trim();
+  const category=document.getElementById('prefCategory').value;
+  const id=document.getElementById('prefId').value;
+  if(!name){showToast('⚠️ 请填写名称');return;}
+  const pref={name,note,category};
+  if(id!==''){preferences[parseInt(id)]=pref;}
+  else{preferences.unshift(pref);}
+  save(K_PREFS,preferences);
+  renderPrefs();
+  closePrefModal();
+  showToast(id!==''?'✏️ 喜好已更新':'💝 喜好已添加');
+}
+
+function deletePref(idx){
+  if(!confirm('确定删除这条喜好吗？'))return;
+  preferences.splice(idx,1);
+  save(K_PREFS,preferences);
+  renderPrefs();
+  showToast('🗑️ 喜好已删除');
+}
+
+// ==================== MODAL CLOSE ====================
+document.querySelectorAll('.modal-overlay').forEach(overlay=>{
+  overlay.addEventListener('click',function(e){
+    if(e.target===this){this.style.display='none';}
+  });
+});
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay').forEach(o=>o.style.display='none');
+  }
+});
+
+// ==================== INIT ====================
+renderCountdowns();
+renderMemos();
+
+// Auto-refresh countdown every minute
+setInterval(renderCountdowns, 60000);
+
+// Demo data
+if(memos.length===0&&countdowns.length===0&&preferences.length===0){
+  countdowns=[{name:'恋爱纪念日',date:'2024-02-14'},{name:'她的生日',date:'2024-06-01'}];
+  save(K_COUNTDOWNS,countdowns);
+  memos=[
+    {title:'第一次牵手 💕',content:'在星星点点的路灯下，你牵起了我的手，心跳加速的瞬间，整个世界都变得不一样了～',category:'anniversary',date:'2024-02-14',time:'',image:'',notified:false,createdAt:new Date().toISOString()},
+    {title:'周末约会计划 🌹',content:'1. 去猫咪咖啡馆 ☕🐱\n2. 看新上映的爱情电影 🎬\n3. 晚餐去吃她最爱的日料 🍣',category:'date',date:'2024-03-16',time:'10:00',image:'',notified:false,createdAt:new Date(Date.now()-86400000).toISOString()},
+    {title:'每晚睡前必做',content:'💤 说晚安\n💬 分享今天最开心的一件事\n💕 说一句我爱你的理由',category:'love',date:'',time:'',image:'',notified:false,createdAt:new Date(Date.now()-172800000).toISOString()},
+    {title:'买周年礼物 🎁',content:'她想要那条项链好久了，趁周年纪念日偷偷买给她！记得提前一周下单～',category:'reminder',date:'2024-02-07',time:'09:00',image:'',notified:false,createdAt:new Date(Date.now()-259200000).toISOString()}
+  ];
+  save(K_MEMOS,memos);
+  preferences=[
+    {name:'海底捞火锅 🍲',note:'她超爱番茄锅，每次必点虾滑',category:'food'},
+    {name:'周杰伦 🎤',note:'两个人都喜欢的歌手',category:'music'},
+    {name:'新海诚电影 🎬',note:'《你的名字》《天气之子》一起N刷',category:'movie'},
+    {name:'对方喜欢的香水 💐',note:'她喜欢花香调，特别是玫瑰味',category:'gift'},
+    {name:'想去北海道旅行 🗾',note:'冬天去看雪，泡温泉',category:'travel'}
+  ];
+  save(K_PREFS,preferences);
+  renderCountdowns();
+  renderMemos();
+}
+
+// Auto-request notification permission on load
+if(notifyEnabled&&Notification.permission==='default'){
+  Notification.requestPermission();
+}
+</script>
+</body>
+</html>
