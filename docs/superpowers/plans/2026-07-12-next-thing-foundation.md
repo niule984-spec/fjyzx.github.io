@@ -319,7 +319,7 @@ Expected: the repository contains a reproducible foundation and an explicit hand
 
 ## Execution Notes
 
-- Run the plan from `C:\Users\zhaoxin\OneDrive\文档\New project 2\.worktrees\next-thing-foundation` on branch `codex/next-thing-foundation`.
+- Run the plan from `C:\Users\zhaoxin\codex-worktrees\next-thing-foundation` on branch `codex/next-thing-foundation`. The worktree was moved here because Hvigor rejects project paths containing Chinese directory names.
 - Use the DevEco-generated files and current IDE labels as the source of truth when names differ from this plan.
 - Never paste credentials, private keys, or signing material into `README.md` or Git.
 - If a task fails, preserve the first error message and resolve the environment mismatch before continuing; do not mask it by deleting the project or copying old configuration files.
