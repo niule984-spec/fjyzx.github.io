@@ -1,7 +1,7 @@
 .superpowers/
+.worktrees/
 .hvigor/
 .idea/
 node_modules/
 build/
 oh_modules/
-
