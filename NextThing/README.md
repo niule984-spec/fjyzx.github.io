@@ -54,3 +54,10 @@ Task 5 已完成 build/install/start 验证。Task 6 已将首页文本设置为
 3. 再加入任务数据、本地存储、计时状态和其余 MVP 页面。
 
 不要将账号、私钥、签名文件或其他凭据提交到仓库。
+
+## Foundation 验收记录（2026-07-12）
+
+- CLI `clean`、`assembleApp`、`hdc install -r` 和 `aa start` 验证通过。
+- `com.zhaoxin.nextthing` 的 `EntryAbility` 已确认处于 `FOREGROUND`。
+- DevEco Studio GUI close/reopen 未由 UI Automation 完成，保留为人工 smoke test；本记录不声称 GUI 已通过。
+- 本阶段未加入计时器、任务列表、Preferences、RDB、通知、后端或额外依赖。
