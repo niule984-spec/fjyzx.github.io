@@ -22,7 +22,7 @@ export function refreshFocusTimer(timer: FocusTimerState, now: number): FocusTim
 
   const remainingSeconds = Math.max(0, Math.floor((timer.targetEndTime - now) / 1_000));
   return {
-    ...timer,
+    durationSeconds: timer.durationSeconds,
     remainingSeconds,
     targetEndTime: remainingSeconds === 0 ? 0 : timer.targetEndTime,
     isRunning: remainingSeconds > 0
@@ -32,7 +32,8 @@ export function refreshFocusTimer(timer: FocusTimerState, now: number): FocusTim
 export function pauseFocusTimer(timer: FocusTimerState, now: number): FocusTimerState {
   const refreshed = refreshFocusTimer(timer, now);
   return {
-    ...refreshed,
+    durationSeconds: refreshed.durationSeconds,
+    remainingSeconds: refreshed.remainingSeconds,
     targetEndTime: 0,
     isRunning: false
   };
@@ -44,7 +45,8 @@ export function resumeFocusTimer(timer: FocusTimerState, now: number): FocusTime
   }
 
   return {
-    ...timer,
+    durationSeconds: timer.durationSeconds,
+    remainingSeconds: timer.remainingSeconds,
     targetEndTime: now + timer.remainingSeconds * 1_000,
     isRunning: true
   };
