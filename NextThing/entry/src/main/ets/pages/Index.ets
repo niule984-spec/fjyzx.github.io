@@ -1,4 +1,5 @@
 import { validateTaskTitle } from '../home/HomePageValidation';
+import router from '@ohos.router';
 
 @Entry
 @Component
@@ -19,8 +20,13 @@ struct Index {
       return;
     }
 
-    this.taskTitle = result.taskTitle;
-    this.feedback = `已准备开始：${result.taskTitle}（${this.selectedMinutes} 分钟）`;
+    router.pushUrl({
+      url: 'pages/FocusTimer',
+      params: {
+        taskName: result.taskTitle,
+        durationMinutes: this.selectedMinutes
+      }
+    });
   }
 
   build() {
