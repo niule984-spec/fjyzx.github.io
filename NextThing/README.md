@@ -61,3 +61,10 @@ Task 5 已完成 build/install/start 验证。Task 6 已将首页文本设置为
 - `com.zhaoxin.nextthing` 的 `EntryAbility` 已确认处于 `FOREGROUND`。
 - DevEco Studio GUI close/reopen 未由 UI Automation 完成，保留为人工 smoke test；本记录不声称 GUI 已通过。
 - 本阶段未加入计时器、任务列表、Preferences、RDB、通知、后端或额外依赖。
+
+## 专注计时验收记录（2026-07-13）
+
+- 首页已将任务名称和 5/10/25 分钟时长传递给专注计时页。
+- 计时器使用目标结束时间推导剩余秒数，暂停时保持剩余时间，继续时重新计算目标结束时间。
+- 已在 API 24 模拟器验证倒计时格式、进度条、暂停/继续、提前结束、自然归零结果页，以及完成后返回首页。
+- 本阶段不保存完成结果；Preferences、RDB 和历史记录留待后续阶段。
