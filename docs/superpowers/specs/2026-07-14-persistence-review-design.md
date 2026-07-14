@@ -1,73 +1,55 @@
-# Persistence And Review Design
+# 本地数据与今日回顾设计
 
-## Scope
+## 范围
 
-Add local persistence to NextThing so current work survives process restarts, every
-ended focus session produces a record, the user can manage an inbox, and the user can
-review today's activity. This feature uses local RDB only. Cloud sync, notifications,
-historical date browsing, and account features are out of scope.
+为 NextThing 加入本地数据能力，使当前任务在应用重启后保留、每次结束专注都会生成记录、用户可以管理清空脑袋任务，并查看当天专注情况。本阶段只使用本地 RDB，不包含云同步、通知、历史日期浏览或账号功能。
 
-## Navigation
+## 导航
 
-The main page becomes a three-tab ArkUI interface:
+主页面改为三个标签页：
 
-- `现在`: current task input and duration selection; it pre-fills the saved next task.
-- `清空脑袋`: inbox task capture, deletion, and setting a task as the next task.
-- `今日回顾`: statistics for records whose end time falls on the local calendar day.
+- `现在`：当前任务输入和时长选择；自动预填已保存的下一件事。
+- `清空脑袋`：新增任务、删除任务、设为下一件事。
+- `今日回顾`：统计本地当天结束的专注记录。
 
-Setting an inbox task as next task stores it and switches to `现在`; it never starts a
-focus session automatically.
+点击“设为下一件事”会保存任务并切换到“现在”页，不会自动开始专注。
 
-## Local Data
+## 本地数据
 
-Use a single RDB database with these tables:
+使用一个 RDB 数据库，包含以下三张表：
 
-| Table | Key fields | Purpose |
+| 数据表 | 关键字段 | 用途 |
 | --- | --- | --- |
-| `inbox_tasks` | `id`, `title`, `created_at` | User-captured tasks awaiting action. |
-| `focus_records` | `id`, `task_title`, `planned_minutes`, `actual_seconds`, `ended_at`, `outcome` | Immutable record of every ended session. |
-| `app_state` | `state_key`, `state_value` | Saved next task and active session JSON. |
+| `inbox_tasks` | `id`、`title`、`created_at` | 用户临时收集、尚未处理的任务。 |
+| `focus_records` | `id`、`task_title`、`planned_minutes`、`actual_seconds`、`ended_at`、`outcome` | 每次结束专注生成的记录。 |
+| `app_state` | `state_key`、`state_value` | 保存下一件事和当前专注会话 JSON。 |
 
-`focus_records.outcome` is `pending`, `completed`, `unfinished`, or `changed`.
-Deleting an inbox task never deletes focus records.
+`focus_records.outcome` 取值为 `pending`、`completed`、`unfinished`、`changed`。删除清空脑袋任务不会删除已经生成的专注记录。
 
-## Active Session Recovery
+## 当前会话恢复
 
-`app_state` stores the current next-task title and, while a timer is active or paused,
-the `taskName`, `durationMinutes`, `remainingSeconds`, `targetEndTime`, and
-`isRunning` fields needed by the existing timestamp timer engine.
+`app_state` 保存下一件事标题，以及进行中或暂停中的专注会话。会话数据包含 `taskName`、`durationMinutes`、`remainingSeconds`、`targetEndTime` 和 `isRunning`，与现有时间戳计时引擎保持一致。
 
-Starting, pausing, and resuming immediately writes the active session. On application
-start, the current-tab view loads it. If a session is active, the app restores the
-timer route; the engine derives remaining time from `targetEndTime`. If that result is
-zero, it transitions to the result choice state. Completing a result choice clears the
-active session.
+开始、暂停和继续专注时都立即写入当前会话。应用重新打开后，“现在”页加载数据：若存在活动会话，则恢复计时页，并根据 `targetEndTime` 重新计算剩余时间；若计算结果为零，则自动进入结果选择状态。完成结果选择后清除当前会话。
 
-## Records And Results
+## 记录与结果
 
-When a timer reaches zero or is ended early, create one record immediately with
-`pending` outcome and actual seconds equal to planned seconds minus remaining seconds.
-The result buttons update that record to `completed`, `unfinished`, or `changed`, then
-return to `现在`. A restart on the result screen preserves the pending record and the
-active-session result state until a choice is made.
+倒计时归零或用户提前结束时，立即创建一条专注记录，初始结果为 `pending`。实际专注秒数等于计划秒数减去剩余秒数。
 
-## Inbox And Review
+用户点击“完成了”“还没完成”或“换一件事”后，将该记录更新为 `completed`、`unfinished` 或 `changed`，再返回“现在”页。若结果页时应用关闭，`pending` 记录与结果页会话状态仍会保留，等待用户下次选择。
 
-The inbox tab has one task input, an add action, and a compact list. Each item offers
-set-as-next and delete controls. Empty or whitespace-only task titles cannot be added.
+## 清空脑袋与今日回顾
 
-The review tab computes local-day totals from all ended records, including unfinished
-and changed sessions: total sessions, actual focus minutes, completed count, and
-unfinished count. Pending records are excluded from outcome counts but included in the
-session and actual-time totals after they are created.
+清空脑袋页有一个任务输入框、添加操作和紧凑任务列表。每项任务提供“设为下一件事”和删除操作。空任务或只包含空格的任务不能添加。
 
-## Verification
+今日回顾按本地自然日统计全部已结束记录，包括未完成和换一件事的会话：专注次数、实际专注总分钟数、完成次数和未完成次数。`pending` 记录计入专注次数和实际时长，但不计入完成或未完成次数。
 
-Test source covers persistence mapping, local-day boundaries, actual-duration
-calculation, and timestamp recovery. Manual API 24 simulator acceptance covers:
+## 验证
 
-1. adding, deleting, and selecting inbox tasks;
-2. closing and reopening the app with a next task and active/paused session;
-3. generating records from early and natural completion;
-4. selecting each result outcome;
-5. today-review counts and actual duration.
+测试源码覆盖数据映射、本地日期边界、实际时长计算和时间戳恢复。API 24 模拟器手工验收覆盖：
+
+1. 新增、删除和设为下一件事。
+2. 保存下一件事、进行中会话和暂停会话后关闭并重新打开应用。
+3. 提前结束和自然结束后生成记录。
+4. 选择三种结果。
+5. 今日回顾的数量和实际时长统计。
