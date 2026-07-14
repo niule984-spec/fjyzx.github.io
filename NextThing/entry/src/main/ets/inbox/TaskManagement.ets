@@ -1,6 +1,9 @@
 import { InboxSortMode, InboxTask } from '../data/PersistenceModels';
 
 export function validatePlannedMinutes(value: string): number | undefined {
+  if (!/^[1-9][0-9]*$/.test(value)) {
+    return undefined;
+  }
   const minutes = Number(value);
   if (!Number.isFinite(minutes) || Math.floor(minutes) !== minutes || minutes <= 0) {
     return undefined;

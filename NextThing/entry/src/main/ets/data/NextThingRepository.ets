@@ -69,11 +69,9 @@ export function parseNextTask(value: string): NextTask | undefined {
     const candidate = JSON.parse(value) as NextTask;
     if (typeof candidate.title === 'string' && typeof candidate.plannedMinutes === 'number' &&
       Number.isInteger(candidate.plannedMinutes) && candidate.plannedMinutes > 0) return candidate;
-  } catch (_error) {
-    const title = normalizeTaskTitle(value);
-    return title.length > 0 ? { title, plannedMinutes: 25 } : undefined;
-  }
-  return undefined;
+  } catch (_error) { }
+  const title = normalizeTaskTitle(value);
+  return title.length > 0 ? { title, plannedMinutes: 25 } : undefined;
 }
 
 export class NextThingRepository {
@@ -126,7 +124,15 @@ export class NextThingRepository {
   }
 
   async updateManualOrder(tasks: InboxTask[]): Promise<void> {
-    for (let index = 0; index < tasks.length; index++) await this.getStore().executeSql('UPDATE inbox_tasks SET sort_order = ? WHERE id = ?', [index + 1, tasks[index].id]);
+    const store = this.getStore();
+    await store.executeSql('BEGIN TRANSACTION');
+    try {
+      for (let index = 0; index < tasks.length; index++) await store.executeSql('UPDATE inbox_tasks SET sort_order = ? WHERE id = ?', [index + 1, tasks[index].id]);
+      await store.executeSql('COMMIT');
+    } catch (_error) {
+      await store.executeSql('ROLLBACK');
+      throw new Error('保存排序失败');
+    }
   }
   async saveActiveSession(session: ActiveSession): Promise<void> { await this.saveState('active_session', JSON.stringify(session)); }
   async clearActiveSession(): Promise<void> { await this.getStore().executeSql('DELETE FROM app_state WHERE state_key = ?', ['active_session']); }

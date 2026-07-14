@@ -223,20 +223,6 @@ struct Index {
       }
       .width('100%')
 
-      TextInput({ placeholder: '搜索任务', text: this.inboxSearch })
-        .id('inbox-search')
-        .width('100%')
-        .height(44)
-        .backgroundColor('#F3F5F8')
-        .onChange((value: string) => this.inboxSearch = value)
-
-      Row({ space: 8 }) {
-        Button('最近添加').backgroundColor(this.inboxSortMode === 'newest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'newest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'newest')
-        Button('最早添加').backgroundColor(this.inboxSortMode === 'oldest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'oldest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'oldest')
-        Button('名称').backgroundColor(this.inboxSortMode === 'title' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'title' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'title')
-        Button('手动').backgroundColor(this.inboxSortMode === 'manual' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'manual' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'manual')
-      }.width('100%')
-
       Button('开始')
         .id('start-button')
         .width('100%')
@@ -287,6 +273,20 @@ struct Index {
       }
       .width('100%')
 
+      TextInput({ placeholder: '搜索任务', text: this.inboxSearch })
+        .id('inbox-search')
+        .width('100%')
+        .height(44)
+        .backgroundColor('#F3F5F8')
+        .onChange((value: string) => this.inboxSearch = value)
+
+      Row({ space: 8 }) {
+        Button('最近添加').layoutWeight(1).backgroundColor(this.inboxSortMode === 'newest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'newest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'newest')
+        Button('最早添加').layoutWeight(1).backgroundColor(this.inboxSortMode === 'oldest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'oldest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'oldest')
+        Button('名称').layoutWeight(1).backgroundColor(this.inboxSortMode === 'title' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'title' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'title')
+        Button('手动').layoutWeight(1).backgroundColor(this.inboxSortMode === 'manual' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'manual' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'manual')
+      }.width('100%')
+
       if (this.inboxFeedback.length > 0) {
         Text(this.inboxFeedback)
           .id('inbox-feedback')
@@ -335,8 +335,8 @@ struct Index {
                     .onClick(() => this.chooseNextTask(task))
                   Button('编辑').id(`edit-inbox-${task.id}`).onClick(() => this.startEditing(task))
                   if (this.inboxSortMode === 'manual') {
-                    Button('上移').enabled(this.visibleInboxTasks().findIndex((item: InboxTask) => item.id === task.id) > 0).onClick(() => this.moveTask(task, -1))
-                    Button('下移').enabled(this.visibleInboxTasks().findIndex((item: InboxTask) => item.id === task.id) < this.visibleInboxTasks().length - 1).onClick(() => this.moveTask(task, 1))
+                    Button('上移').enabled(this.inboxSearch.trim().length === 0 && this.visibleInboxTasks().findIndex((item: InboxTask) => item.id === task.id) > 0).onClick(() => this.moveTask(task, -1))
+                    Button('下移').enabled(this.inboxSearch.trim().length === 0 && this.visibleInboxTasks().findIndex((item: InboxTask) => item.id === task.id) < this.visibleInboxTasks().length - 1).onClick(() => this.moveTask(task, 1))
                   }
                   Button('删除')
                     .id(`delete-inbox-${task.id}`)
