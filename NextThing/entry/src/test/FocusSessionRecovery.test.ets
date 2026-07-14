@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@ohos/hypium';
 import { restoreFocusSession } from '../main/ets/focus/FocusSessionRecovery';
 import { needsPendingRecord } from '../main/ets/focus/FocusResultPersistence';
+import { canFinishResult, shouldPersistActiveSession } from '../main/ets/focus/FocusPersistenceGuards';
+import { parseActiveSession } from '../main/ets/data/NextThingRepository';
 
 export default function focusSessionRecoveryTest() {
   describe('focus session recovery', () => {
@@ -72,6 +74,21 @@ export default function focusSessionRecoveryTest() {
         pendingRecordId: 42,
         resultKey: 'result-1'
       })).assertFalse();
+    });
+
+    it('does not write an active session after its result was confirmed', 0, () => {
+      expect(shouldPersistActiveSession(true)).assertFalse();
+      expect(shouldPersistActiveSession(false)).assertTrue();
+    });
+
+    it('allows a result choice only once after a pending record is ready', 0, () => {
+      expect(canFinishResult(42, false)).assertTrue();
+      expect(canFinishResult(42, true)).assertFalse();
+      expect(canFinishResult(0, false)).assertFalse();
+    });
+
+    it('ignores corrupted active session data', 0, () => {
+      expect(parseActiveSession('{broken')).assertEqual(undefined);
     });
   });
 }

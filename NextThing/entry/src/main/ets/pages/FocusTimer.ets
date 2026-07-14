@@ -11,6 +11,7 @@ import { appRepository } from '../data/AppRepository';
 import { ActiveSession, FocusOutcome } from '../data/PersistenceModels';
 import { restoreFocusSession } from '../focus/FocusSessionRecovery';
 import { needsPendingRecord } from '../focus/FocusResultPersistence';
+import { canFinishResult, shouldPersistActiveSession } from '../focus/FocusPersistenceGuards';
 
 interface FocusTimerParams {
   taskName: string;
@@ -28,7 +29,10 @@ struct FocusTimer {
   private intervalId: number = -1;
   private pendingRecordId: number = 0;
   private resultKey: string = '';
+  private isFinished: boolean = false;
   @State isCreatingResult: boolean = false;
+  @State isFinishing: boolean = false;
+  @State persistenceFeedback: string = '';
 
   aboutToAppear(): void {
     const params = router.getParams() as FocusTimerParams;
@@ -136,6 +140,7 @@ struct FocusTimer {
       return;
     }
     this.isCreatingResult = true;
+    this.persistenceFeedback = '';
     if (this.resultKey.length === 0) {
       this.resultKey = `result-${Date.now()}`;
     }
@@ -152,11 +157,19 @@ struct FocusTimer {
       this.pendingRecordId = id;
       this.isCreatingResult = false;
       this.saveSession();
+    }).catch(() => {
+      this.isCreatingResult = false;
+      this.persistenceFeedback = '记录保存失败，请重试';
     });
   }
 
   private saveSession(): void {
-    this.persistSession();
+    if (!shouldPersistActiveSession(this.isFinished)) {
+      return;
+    }
+    this.persistSession().catch(() => {
+      this.persistenceFeedback = '当前进度保存失败，请稍后重试';
+    });
   }
 
   private persistSession(): Promise<void> {
@@ -173,19 +186,42 @@ struct FocusTimer {
   }
 
   private finishWith(outcome: FocusOutcome): void {
-    if (this.pendingRecordId === 0) {
+    if (!canFinishResult(this.pendingRecordId, this.isFinishing)) {
       return;
     }
+    this.isFinishing = true;
+    this.persistenceFeedback = '';
     appRepository.updateRecordOutcome(this.pendingRecordId, outcome).then(() => {
       return appRepository.clearActiveSession();
     }).then(() => {
+      this.isFinished = true;
       this.stopTicker();
       router.replaceUrl({ url: 'pages/Index' });
+    }).catch(() => {
+      this.isFinishing = false;
+      this.persistenceFeedback = '结果保存失败，请重试';
     });
   }
 
   build() {
     Column({ space: 20 }) {
+      if (this.persistenceFeedback.length > 0) {
+        Text(this.persistenceFeedback)
+          .id('persistence-feedback')
+          .fontSize(15)
+          .fontColor('#C62828')
+      }
+      if (this.pageState === 'result' && this.pendingRecordId === 0 && !this.isCreatingResult) {
+        Button('重试保存')
+          .id('retry-save-button')
+          .width('100%')
+          .height(48)
+          .backgroundColor('#E8EDF5')
+          .fontColor('#1F2937')
+          .onClick(() => {
+            this.enterResult();
+          })
+      }
       if (this.pageState === 'result') {
         Text('这次专注结束了')
           .fontSize(28)
@@ -197,7 +233,7 @@ struct FocusTimer {
 
         Button('完成了')
           .id('completed-button')
-          .enabled(!this.isCreatingResult)
+          .enabled(!this.isCreatingResult && !this.isFinishing)
           .width('100%')
           .height(48)
           .backgroundColor('#16794C')
@@ -208,7 +244,7 @@ struct FocusTimer {
 
         Button('还没完成')
           .id('unfinished-button')
-          .enabled(!this.isCreatingResult)
+          .enabled(!this.isCreatingResult && !this.isFinishing)
           .width('100%')
           .height(48)
           .backgroundColor('#E8EDF5')
@@ -219,7 +255,7 @@ struct FocusTimer {
 
         Button('换一件事')
           .id('change-task-button')
-          .enabled(!this.isCreatingResult)
+          .enabled(!this.isCreatingResult && !this.isFinishing)
           .width('100%')
           .height(48)
           .backgroundColor('#E8EDF5')

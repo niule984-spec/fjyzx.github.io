@@ -10,7 +10,19 @@ const STORE_CONFIG: relationalStore.StoreConfig = {
 const CREATE_INBOX = 'CREATE TABLE IF NOT EXISTS inbox_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, created_at INTEGER NOT NULL)';
 const CREATE_RECORD = 'CREATE TABLE IF NOT EXISTS focus_records (id INTEGER PRIMARY KEY AUTOINCREMENT, task_title TEXT NOT NULL, planned_minutes INTEGER NOT NULL, actual_seconds INTEGER NOT NULL, ended_at INTEGER NOT NULL, outcome TEXT NOT NULL, result_key TEXT NOT NULL DEFAULT \'\')';
 const ADD_RESULT_KEY = 'ALTER TABLE focus_records ADD COLUMN result_key TEXT NOT NULL DEFAULT \'\'';
+const CREATE_RESULT_KEY_INDEX = 'CREATE UNIQUE INDEX IF NOT EXISTS idx_focus_records_result_key ON focus_records(result_key) WHERE result_key <> \'\'';
 const CREATE_STATE = 'CREATE TABLE IF NOT EXISTS app_state (state_key TEXT PRIMARY KEY, state_value TEXT NOT NULL)';
+
+export function parseActiveSession(value: string): ActiveSession | undefined {
+  if (value.length === 0) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(value) as ActiveSession;
+  } catch (_error) {
+    return undefined;
+  }
+}
 
 export function normalizeTaskTitle(title: string): string {
   return title.trim();
@@ -23,11 +35,8 @@ export class NextThingRepository {
     this.store = await relationalStore.getRdbStore(context, STORE_CONFIG);
     await this.store.executeSql(CREATE_INBOX);
     await this.store.executeSql(CREATE_RECORD);
-    try {
-      await this.store.executeSql(ADD_RESULT_KEY);
-    } catch (_error) {
-      // Existing databases already contain this column.
-    }
+    await this.ensureResultKeyColumn();
+    await this.store.executeSql(CREATE_RESULT_KEY_INDEX);
     await this.store.executeSql(CREATE_STATE);
   }
 
@@ -67,7 +76,15 @@ export class NextThingRepository {
 
   async loadActiveSession(): Promise<ActiveSession | undefined> {
     const value = await this.loadState('active_session');
-    return value.length === 0 ? undefined : JSON.parse(value) as ActiveSession;
+    const session = parseActiveSession(value);
+    if (session === undefined && value.length > 0) {
+      try {
+        await this.clearActiveSession();
+      } catch (_error) {
+        // Returning no session keeps malformed persisted state from blocking startup.
+      }
+    }
+    return session;
   }
 
   async createPendingRecord(record: PendingFocusRecord): Promise<number> {
@@ -79,14 +96,44 @@ export class NextThingRepository {
   }
 
   async findOrCreatePendingRecord(record: PendingFocusRecord): Promise<number> {
-    const cursor = await this.getStore().querySql('SELECT id FROM focus_records WHERE result_key = ? LIMIT 1', [record.resultKey]);
+    const existingId = await this.findPendingRecordId(record.resultKey);
+    if (existingId !== 0) {
+      return existingId;
+    }
+    try {
+      return await this.createPendingRecord(record);
+    } catch (_error) {
+      const racedId = await this.findPendingRecordId(record.resultKey);
+      if (racedId !== 0) {
+        return racedId;
+      }
+      throw new Error('无法创建专注记录');
+    }
+  }
+
+  private async ensureResultKeyColumn(): Promise<void> {
+    const cursor = await this.getStore().querySql('PRAGMA table_info(focus_records)');
+    let hasResultKey = false;
+    while (cursor.goToNextRow()) {
+      if (cursor.getString(1) === 'result_key') {
+        hasResultKey = true;
+      }
+    }
+    cursor.close();
+    if (!hasResultKey) {
+      await this.getStore().executeSql(ADD_RESULT_KEY);
+    }
+  }
+
+  private async findPendingRecordId(resultKey: string): Promise<number> {
+    const cursor = await this.getStore().querySql('SELECT id FROM focus_records WHERE result_key = ? LIMIT 1', [resultKey]);
     if (cursor.goToNextRow()) {
       const id = cursor.getLong(0);
       cursor.close();
       return id;
     }
     cursor.close();
-    return this.createPendingRecord(record);
+    return 0;
   }
 
   async updateRecordOutcome(id: number, outcome: FocusOutcome): Promise<void> {

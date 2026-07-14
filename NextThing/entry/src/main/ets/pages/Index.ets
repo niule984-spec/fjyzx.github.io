@@ -51,6 +51,8 @@ struct Index {
           durationMinutes: this.selectedMinutes
         }
       });
+    }).catch(() => {
+      this.feedback = '任务保存失败，请重试';
     });
   }
 
@@ -125,7 +127,7 @@ struct Index {
         Text(this.feedback)
           .id('home-feedback')
           .fontSize(15)
-          .fontColor(this.feedback === '请输入任务内容' ? '#C62828' : '#16794C')
+          .fontColor(this.feedback === '请输入任务内容' || this.feedback.indexOf('失败') >= 0 ? '#C62828' : '#16794C')
           .width('100%')
       }
     }
