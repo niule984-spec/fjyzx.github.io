@@ -1,5 +1,7 @@
 import { validateTaskTitle } from '../home/HomePageValidation';
 import router from '@ohos.router';
+import { appRepository } from '../data/AppRepository';
+import { ActiveSession } from '../data/PersistenceModels';
 
 @Entry
 @Component
@@ -7,6 +9,27 @@ struct Index {
   @State taskTitle: string = '';
   @State selectedMinutes: number = 25;
   @State feedback: string = '';
+
+  aboutToAppear(): void {
+    appRepository.loadNextTask().then((title: string) => {
+      if (title.length > 0) {
+        this.taskTitle = title;
+      }
+      return appRepository.loadActiveSession();
+    }).then((session: ActiveSession | undefined) => {
+      if (session === undefined) {
+        return;
+      }
+      router.pushUrl({
+        url: 'pages/FocusTimer',
+        params: {
+          taskName: session.taskName,
+          durationMinutes: session.durationMinutes,
+          restoredSession: JSON.stringify(session)
+        }
+      });
+    });
+  }
 
   private selectDuration(minutes: number): void {
     this.selectedMinutes = minutes;
@@ -20,12 +43,14 @@ struct Index {
       return;
     }
 
-    router.pushUrl({
-      url: 'pages/FocusTimer',
-      params: {
-        taskName: result.taskTitle,
-        durationMinutes: this.selectedMinutes
-      }
+    appRepository.saveNextTask(result.taskTitle).then(() => {
+      router.pushUrl({
+        url: 'pages/FocusTimer',
+        params: {
+          taskName: result.taskTitle,
+          durationMinutes: this.selectedMinutes
+        }
+      });
     });
   }
 

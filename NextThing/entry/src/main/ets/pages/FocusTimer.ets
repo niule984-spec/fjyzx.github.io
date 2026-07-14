@@ -7,10 +7,14 @@ import {
   refreshFocusTimer,
   resumeFocusTimer
 } from '../focus/FocusTimerEngine';
+import { appRepository } from '../data/AppRepository';
+import { ActiveSession, FocusOutcome } from '../data/PersistenceModels';
+import { restoreFocusSession } from '../focus/FocusSessionRecovery';
 
 interface FocusTimerParams {
   taskName: string;
   durationMinutes: number;
+  restoredSession?: string;
 }
 
 @Entry
@@ -21,16 +25,38 @@ struct FocusTimer {
   @State timer: FocusTimerState = createFocusTimer(0, 0);
   @State pageState: string = 'running';
   private intervalId: number = -1;
+  private pendingRecordId: number = 0;
 
   aboutToAppear(): void {
     const params = router.getParams() as FocusTimerParams;
     this.taskName = params.taskName;
     this.durationMinutes = params.durationMinutes;
+    const restoredSession = this.readRestoredSession(params.restoredSession);
+    if (restoredSession !== undefined) {
+      this.pendingRecordId = restoredSession.pendingRecordId;
+      this.pageState = restoredSession.pageState;
+      this.timer = restoreFocusSession({
+        durationSeconds: this.durationMinutes * 60,
+        remainingSeconds: restoredSession.remainingSeconds,
+        targetEndTime: restoredSession.targetEndTime,
+        isRunning: restoredSession.isRunning
+      }, Date.now());
+      if (this.timer.remainingSeconds === 0 && this.pageState !== 'result') {
+        this.enterResult();
+        return;
+      }
+      if (this.pageState === 'running' && this.timer.isRunning) {
+        this.startTicker();
+      }
+      this.saveSession();
+      return;
+    }
     this.timer = createFocusTimer(this.durationMinutes, Date.now());
     this.pageState = this.timer.isRunning ? 'running' : 'result';
     if (this.pageState === 'running') {
       this.startTicker();
     }
+    this.saveSession();
   }
 
   onPageShow(): void {
@@ -41,14 +67,14 @@ struct FocusTimer {
   }
 
   aboutToDisappear(): void {
+    this.saveSession();
     this.stopTicker();
   }
 
   private refreshTimer(): void {
     this.timer = refreshFocusTimer(this.timer, Date.now());
     if (this.timer.remainingSeconds === 0) {
-      this.pageState = 'result';
-      this.stopTicker();
+      this.enterResult();
     }
   }
 
@@ -70,22 +96,68 @@ struct FocusTimer {
     if (this.timer.isRunning) {
       this.timer = pauseFocusTimer(this.timer, Date.now());
       this.stopTicker();
+      this.saveSession();
       return;
     }
 
     this.timer = resumeFocusTimer(this.timer, Date.now());
     this.startTicker();
+    this.saveSession();
   }
 
   private endEarly(): void {
     this.timer = pauseFocusTimer(this.timer, Date.now());
-    this.pageState = 'result';
-    this.stopTicker();
+    this.enterResult();
   }
 
-  private returnHome(): void {
+  private readRestoredSession(value: string | undefined): ActiveSession | undefined {
+    if (value === undefined || value.length === 0) {
+      return undefined;
+    }
+    return JSON.parse(value) as ActiveSession;
+  }
+
+  private enterResult(): void {
+    this.pageState = 'result';
     this.stopTicker();
-    router.replaceUrl({ url: 'pages/Index' });
+    if (this.pendingRecordId === 0) {
+      appRepository.createPendingRecord({
+        taskTitle: this.taskName,
+        plannedMinutes: this.durationMinutes,
+        actualSeconds: this.timer.durationSeconds - this.timer.remainingSeconds,
+        endedAt: Date.now(),
+        outcome: 'pending'
+      }).then((id: number) => {
+        this.pendingRecordId = id;
+        this.saveSession();
+      });
+      return;
+    }
+    this.saveSession();
+  }
+
+  private saveSession(): void {
+    appRepository.saveActiveSession({
+      taskName: this.taskName,
+      durationMinutes: this.durationMinutes,
+      remainingSeconds: this.timer.remainingSeconds,
+      targetEndTime: this.timer.targetEndTime,
+      isRunning: this.timer.isRunning,
+      pageState: this.pageState === 'result' ? 'result' : (this.timer.isRunning ? 'running' : 'paused'),
+      pendingRecordId: this.pendingRecordId
+    });
+  }
+
+  private finishWith(outcome: FocusOutcome): void {
+    if (this.pendingRecordId === 0) {
+      return;
+    }
+    appRepository.updateRecordOutcome(this.pendingRecordId, outcome).then(() => {
+      return appRepository.clearActiveSession();
+    }).then(() => {
+      this.stopTicker();
+      router.replaceUrl({ url: 'pages/Index' });
+    });
   }
 
   build() {
@@ -106,7 +178,7 @@ struct FocusTimer {
           .backgroundColor('#16794C')
           .fontColor('#FFFFFF')
           .onClick(() => {
-            this.returnHome();
+            this.finishWith('completed');
           })
 
         Button('还没完成')
@@ -116,7 +188,7 @@ struct FocusTimer {
           .backgroundColor('#E8EDF5')
           .fontColor('#1F2937')
           .onClick(() => {
-            this.returnHome();
+            this.finishWith('unfinished');
           })
 
         Button('换一件事')
@@ -126,7 +198,7 @@ struct FocusTimer {
           .backgroundColor('#E8EDF5')
           .fontColor('#1F2937')
           .onClick(() => {
-            this.returnHome();
+            this.finishWith('changed');
           })
       } else {
         Text('正在专注')

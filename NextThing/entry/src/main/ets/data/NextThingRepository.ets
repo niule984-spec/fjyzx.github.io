@@ -1,6 +1,6 @@
 import relationalStore from '@ohos.data.relationalStore';
 import { common } from '@kit.AbilityKit';
-import { ActiveSession, FocusOutcome, FocusRecord, InboxTask } from './PersistenceModels';
+import { ActiveSession, FocusOutcome, FocusRecord, InboxTask, PendingFocusRecord } from './PersistenceModels';
 
 const STORE_CONFIG: relationalStore.StoreConfig = {
   name: 'nextthing.db',
@@ -64,7 +64,7 @@ export class NextThingRepository {
     return value.length === 0 ? undefined : JSON.parse(value) as ActiveSession;
   }
 
-  async createPendingRecord(record: Omit<FocusRecord, 'id'>): Promise<number> {
+  async createPendingRecord(record: PendingFocusRecord): Promise<number> {
     return await this.getStore().insert('focus_records', {
       task_title: record.taskTitle, planned_minutes: record.plannedMinutes,
       actual_seconds: record.actualSeconds, ended_at: record.endedAt, outcome: record.outcome
