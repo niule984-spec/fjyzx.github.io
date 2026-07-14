@@ -1,8 +1,8 @@
 import { validateTaskTitle } from '../home/HomePageValidation';
 import router from '@ohos.router';
 import { appRepository } from '../data/AppRepository';
-import { ActiveSession, InboxSortMode, InboxTask, NextTask, TodayReview } from '../data/PersistenceModels';
-import { calculateTodayReview } from '../data/ReviewCalculator';
+import { ActiveSession, FocusRecord, InboxSortMode, InboxTask, NextTask, TodayReview } from '../data/PersistenceModels';
+import { calculateTodayReview, formatReviewTime, reviewStatusLabel } from '../data/ReviewCalculator';
 import { filterInboxTasks, sortInboxTasks, validatePlannedMinutes } from '../inbox/TaskManagement';
 
 @Entry
@@ -25,8 +25,10 @@ struct Index {
     sessionCount: 0,
     actualMinutes: 0,
     completedCount: 0,
-    unfinishedCount: 0
+    unfinishedCount: 0,
+    abandonedCount: 0
   };
+  @State reviewRecords: FocusRecord[] = [];
   @State reviewFeedback: string = '';
 
   aboutToAppear(): void {
@@ -170,6 +172,8 @@ struct Index {
     tomorrowStart.setDate(tomorrowStart.getDate() + 1);
     appRepository.listTodayRecords(todayStart.getTime(), tomorrowStart.getTime()).then((records) => {
       this.review = calculateTodayReview(records);
+      this.reviewRecords = records.filter((record: FocusRecord) => record.outcome !== 'pending')
+        .sort((left: FocusRecord, right: FocusRecord) => right.endedAt - left.endedAt);
       this.reviewFeedback = '';
     }).catch(() => {
       this.reviewFeedback = '读取今日回顾失败，请重试。';
@@ -451,6 +455,43 @@ struct Index {
         .borderRadius(6)
       }
       .width('100%')
+      Row() {
+        Text(`已放弃 ${this.review.abandonedCount} 次`)
+          .fontSize(14)
+          .fontColor('#8A4B08')
+      }
+      .width('100%')
+      .padding(12)
+      .backgroundColor('#FFF3E8')
+      .borderRadius(6)
+      Text('专注记录')
+        .fontSize(18)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      if (this.reviewRecords.length === 0) {
+        Text('今天还没有结束的专注记录')
+          .fontSize(16)
+          .fontColor('#5F6B7A')
+          .width('100%')
+          .margin({ top: 24 })
+      } else {
+        List({ space: 8 }) {
+          ForEach(this.reviewRecords, (record: FocusRecord) => {
+            ListItem() {
+              Row() {
+                Column({ space: 4 }) {
+                  Text(record.taskTitle).fontSize(16).fontWeight(FontWeight.Medium).width('100%')
+                  Text(`${Math.floor(record.actualSeconds / 60)} 分钟 · ${formatReviewTime(record.endedAt)}`)
+                    .fontSize(14).fontColor('#5F6B7A')
+                }.layoutWeight(1)
+                Text(reviewStatusLabel(record.outcome))
+                  .fontSize(14)
+                  .fontColor(record.outcome === 'completed' ? '#16794C' : record.outcome === 'unfinished' ? '#C62828' : '#8A4B08')
+              }.width('100%').padding(14).backgroundColor('#F8FAFC').borderRadius(6)
+            }
+          }, (record: FocusRecord) => record.id.toString())
+        }.width('100%').layoutWeight(1)
+      }
       if (this.reviewFeedback.length > 0) {
         Text(this.reviewFeedback)
           .id('review-feedback')

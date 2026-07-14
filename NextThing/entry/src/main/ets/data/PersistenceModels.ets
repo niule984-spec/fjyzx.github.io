@@ -49,4 +49,5 @@ export interface TodayReview {
   actualMinutes: number;
   completedCount: number;
   unfinishedCount: number;
+  abandonedCount: number;
 }
