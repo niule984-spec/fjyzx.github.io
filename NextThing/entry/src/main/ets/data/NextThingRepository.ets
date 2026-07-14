@@ -1,6 +1,6 @@
 import relationalStore from '@ohos.data.relationalStore';
 import { common } from '@kit.AbilityKit';
-import { ActiveSession, FocusOutcome, FocusRecord, InboxTask, PendingFocusRecord } from './PersistenceModels';
+import { ActiveSession, FocusOutcome, FocusRecord, InboxTask, NextTask, PendingFocusRecord } from './PersistenceModels';
 
 const STORE_CONFIG: relationalStore.StoreConfig = {
   name: 'nextthing.db',
@@ -12,6 +12,8 @@ const CREATE_RECORD = 'CREATE TABLE IF NOT EXISTS focus_records (id INTEGER PRIM
 const ADD_RESULT_KEY = 'ALTER TABLE focus_records ADD COLUMN result_key TEXT NOT NULL DEFAULT \'\'';
 const CREATE_RESULT_KEY_INDEX = 'CREATE UNIQUE INDEX IF NOT EXISTS idx_focus_records_result_key ON focus_records(result_key) WHERE result_key <> \'\'';
 const CREATE_STATE = 'CREATE TABLE IF NOT EXISTS app_state (state_key TEXT PRIMARY KEY, state_value TEXT NOT NULL)';
+const ADD_INBOX_MINUTES = 'ALTER TABLE inbox_tasks ADD COLUMN planned_minutes INTEGER NOT NULL DEFAULT 25';
+const ADD_INBOX_ORDER = 'ALTER TABLE inbox_tasks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0';
 
 interface ActiveSessionCandidate {
   taskName?: string;
@@ -61,12 +63,26 @@ export function normalizeTaskTitle(title: string): string {
   return title.trim();
 }
 
+export function parseNextTask(value: string): NextTask | undefined {
+  if (value.length === 0) return undefined;
+  try {
+    const candidate = JSON.parse(value) as NextTask;
+    if (typeof candidate.title === 'string' && typeof candidate.plannedMinutes === 'number' &&
+      Number.isInteger(candidate.plannedMinutes) && candidate.plannedMinutes > 0) return candidate;
+  } catch (_error) {
+    const title = normalizeTaskTitle(value);
+    return title.length > 0 ? { title, plannedMinutes: 25 } : undefined;
+  }
+  return undefined;
+}
+
 export class NextThingRepository {
   private store: relationalStore.RdbStore | undefined;
 
   async initialize(context: common.Context): Promise<void> {
     this.store = await relationalStore.getRdbStore(context, STORE_CONFIG);
     await this.store.executeSql(CREATE_INBOX);
+    await this.ensureInboxColumns();
     await this.store.executeSql(CREATE_RECORD);
     await this.ensureResultKeyColumn();
     await this.store.executeSql(CREATE_RESULT_KEY_INDEX);
@@ -80,19 +96,19 @@ export class NextThingRepository {
     return this.store;
   }
 
-  async addInboxTask(title: string): Promise<InboxTask> {
+  async addInboxTask(title: string, plannedMinutes: number = 25): Promise<InboxTask> {
     const normalized = normalizeTaskTitle(title);
     if (normalized.length === 0) throw new Error('任务不能为空');
     const createdAt = Date.now();
-    const id = await this.getStore().insert('inbox_tasks', { title: normalized, created_at: createdAt });
-    return { id, title: normalized, createdAt };
+    const id = await this.getStore().insert('inbox_tasks', { title: normalized, created_at: createdAt, planned_minutes: plannedMinutes, sort_order: createdAt });
+    return { id, title: normalized, createdAt, plannedMinutes, sortOrder: createdAt };
   }
 
   async listInboxTasks(): Promise<InboxTask[]> {
-    const cursor = await this.getStore().querySql('SELECT id, title, created_at FROM inbox_tasks ORDER BY created_at DESC');
+    const cursor = await this.getStore().querySql('SELECT id, title, created_at, planned_minutes, sort_order FROM inbox_tasks ORDER BY created_at DESC');
     const tasks: InboxTask[] = [];
     while (cursor.goToNextRow()) {
-      tasks.push({ id: cursor.getLong(0), title: cursor.getString(1), createdAt: cursor.getLong(2) });
+      tasks.push({ id: cursor.getLong(0), title: cursor.getString(1), createdAt: cursor.getLong(2), plannedMinutes: cursor.getLong(3), sortOrder: cursor.getLong(4) });
     }
     cursor.close();
     return tasks;
@@ -102,8 +118,16 @@ export class NextThingRepository {
     await this.getStore().executeSql('DELETE FROM inbox_tasks WHERE id = ?', [id]);
   }
 
-  async saveNextTask(title: string): Promise<void> { await this.saveState('next_task', normalizeTaskTitle(title)); }
-  async loadNextTask(): Promise<string> { return this.loadState('next_task'); }
+  async saveNextTask(title: string, plannedMinutes: number = 25): Promise<void> { await this.saveState('next_task', JSON.stringify({ title: normalizeTaskTitle(title), plannedMinutes })); }
+  async loadNextTask(): Promise<NextTask | undefined> { return parseNextTask(await this.loadState('next_task')); }
+
+  async updateInboxTask(id: number, title: string, plannedMinutes: number): Promise<void> {
+    await this.getStore().executeSql('UPDATE inbox_tasks SET title = ?, planned_minutes = ? WHERE id = ?', [normalizeTaskTitle(title), plannedMinutes, id]);
+  }
+
+  async updateManualOrder(tasks: InboxTask[]): Promise<void> {
+    for (let index = 0; index < tasks.length; index++) await this.getStore().executeSql('UPDATE inbox_tasks SET sort_order = ? WHERE id = ?', [index + 1, tasks[index].id]);
+  }
   async saveActiveSession(session: ActiveSession): Promise<void> { await this.saveState('active_session', JSON.stringify(session)); }
   async clearActiveSession(): Promise<void> { await this.getStore().executeSql('DELETE FROM app_state WHERE state_key = ?', ['active_session']); }
 
@@ -156,6 +180,20 @@ export class NextThingRepository {
     if (!hasResultKey) {
       await this.getStore().executeSql(ADD_RESULT_KEY);
     }
+  }
+
+  private async ensureInboxColumns(): Promise<void> {
+    const cursor = await this.getStore().querySql('PRAGMA table_info(inbox_tasks)');
+    let hasMinutes = false;
+    let hasOrder = false;
+    while (cursor.goToNextRow()) {
+      hasMinutes = hasMinutes || cursor.getString(1) === 'planned_minutes';
+      hasOrder = hasOrder || cursor.getString(1) === 'sort_order';
+    }
+    cursor.close();
+    if (!hasMinutes) await this.getStore().executeSql(ADD_INBOX_MINUTES);
+    if (!hasOrder) await this.getStore().executeSql(ADD_INBOX_ORDER);
+    await this.getStore().executeSql('UPDATE inbox_tasks SET sort_order = id WHERE sort_order = 0');
   }
 
   private async findPendingRecordId(resultKey: string): Promise<number> {

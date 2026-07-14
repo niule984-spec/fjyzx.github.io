@@ -1,9 +1,18 @@
 export type FocusOutcome = 'pending' | 'completed' | 'unfinished' | 'changed';
 
+export type InboxSortMode = 'newest' | 'oldest' | 'title' | 'manual';
+
 export interface InboxTask {
   id: number;
   title: string;
   createdAt: number;
+  plannedMinutes: number;
+  sortOrder: number;
+}
+
+export interface NextTask {
+  title: string;
+  plannedMinutes: number;
 }
 
 export interface FocusRecord {

@@ -1,7 +1,7 @@
 import { validateTaskTitle } from '../home/HomePageValidation';
 import router from '@ohos.router';
 import { appRepository } from '../data/AppRepository';
-import { ActiveSession, InboxTask, TodayReview } from '../data/PersistenceModels';
+import { ActiveSession, InboxTask, NextTask, TodayReview } from '../data/PersistenceModels';
 import { calculateTodayReview } from '../data/ReviewCalculator';
 
 @Entry
@@ -23,8 +23,11 @@ struct Index {
   @State reviewFeedback: string = '';
 
   aboutToAppear(): void {
-    appRepository.loadNextTask().then((title: string) => {
-      this.taskTitle = title;
+    appRepository.loadNextTask().then((task: NextTask | undefined) => {
+      if (task !== undefined) {
+        this.taskTitle = task.title;
+        this.selectedMinutes = task.plannedMinutes;
+      }
       return appRepository.loadActiveSession();
     }).then((session: ActiveSession | undefined) => {
       if (session === undefined) {
@@ -57,7 +60,7 @@ struct Index {
       return;
     }
 
-    appRepository.saveNextTask(result.taskTitle).then(() => {
+    appRepository.saveNextTask(result.taskTitle, this.selectedMinutes).then(() => {
       router.pushUrl({
         url: 'pages/FocusTimer',
         params: {
@@ -102,9 +105,10 @@ struct Index {
     });
   }
 
-  private chooseNextTask(title: string): void {
-    appRepository.saveNextTask(title).then(() => {
-      this.taskTitle = title;
+  private chooseNextTask(task: InboxTask): void {
+    appRepository.saveNextTask(task.title, task.plannedMinutes).then(() => {
+      this.taskTitle = task.title;
+      this.selectedMinutes = task.plannedMinutes;
       this.feedback = '';
       this.inboxFeedback = '';
       this.selectedTab = 0;
@@ -255,7 +259,7 @@ struct Index {
                     .layoutWeight(1)
                     .backgroundColor('#E8EDF5')
                     .fontColor('#1F2937')
-                    .onClick(() => this.chooseNextTask(task.title))
+                    .onClick(() => this.chooseNextTask(task))
                   Button('删除')
                     .id(`delete-inbox-${task.id}`)
                     .backgroundColor('#FDECEC')
