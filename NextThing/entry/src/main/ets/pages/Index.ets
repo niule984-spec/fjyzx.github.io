@@ -1,8 +1,9 @@
 import { validateTaskTitle } from '../home/HomePageValidation';
 import router from '@ohos.router';
 import { appRepository } from '../data/AppRepository';
-import { ActiveSession, InboxTask, NextTask, TodayReview } from '../data/PersistenceModels';
+import { ActiveSession, InboxSortMode, InboxTask, NextTask, TodayReview } from '../data/PersistenceModels';
 import { calculateTodayReview } from '../data/ReviewCalculator';
+import { filterInboxTasks, sortInboxTasks, validatePlannedMinutes } from '../inbox/TaskManagement';
 
 @Entry
 @Component
@@ -14,6 +15,11 @@ struct Index {
   @State inboxDraft: string = '';
   @State inboxTasks: InboxTask[] = [];
   @State inboxFeedback: string = '';
+  @State inboxSearch: string = '';
+  @State inboxSortMode: InboxSortMode = 'newest';
+  @State editingTaskId: number = 0;
+  @State editingTitle: string = '';
+  @State editingMinutes: string = '25';
   @State review: TodayReview = {
     sessionCount: 0,
     actualMinutes: 0,
@@ -117,6 +123,43 @@ struct Index {
     });
   }
 
+  private startEditing(task: InboxTask): void {
+    this.editingTaskId = task.id;
+    this.editingTitle = task.title;
+    this.editingMinutes = task.plannedMinutes.toString();
+    this.inboxFeedback = '';
+  }
+
+  private saveEditing(): void {
+    const title = validateTaskTitle(this.editingTitle);
+    const minutes = validatePlannedMinutes(this.editingMinutes);
+    if (!title.isValid || minutes === undefined) {
+      this.inboxFeedback = '请输入任务内容和正整数分钟数';
+      return;
+    }
+    appRepository.updateInboxTask(this.editingTaskId, title.taskTitle, minutes).then(() => {
+      this.editingTaskId = 0;
+      this.inboxFeedback = '';
+      this.loadInbox();
+    }).catch(() => this.inboxFeedback = '保存任务失败，请重试');
+  }
+
+  private moveTask(task: InboxTask, offset: number): void {
+    const tasks = sortInboxTasks(this.inboxTasks, 'manual');
+    const index = tasks.findIndex((item: InboxTask) => item.id === task.id);
+    const target = index + offset;
+    if (index < 0 || target < 0 || target >= tasks.length) return;
+    const moved = tasks[index];
+    tasks[index] = tasks[target];
+    tasks[target] = moved;
+    appRepository.updateManualOrder(tasks).then(() => this.loadInbox())
+      .catch(() => this.inboxFeedback = '保存排序失败，请重试');
+  }
+
+  private visibleInboxTasks(): InboxTask[] {
+    return sortInboxTasks(filterInboxTasks(this.inboxTasks, this.inboxSearch), this.inboxSortMode);
+  }
+
   private loadTodayReview(): void {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -180,6 +223,20 @@ struct Index {
       }
       .width('100%')
 
+      TextInput({ placeholder: '搜索任务', text: this.inboxSearch })
+        .id('inbox-search')
+        .width('100%')
+        .height(44)
+        .backgroundColor('#F3F5F8')
+        .onChange((value: string) => this.inboxSearch = value)
+
+      Row({ space: 8 }) {
+        Button('最近添加').backgroundColor(this.inboxSortMode === 'newest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'newest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'newest')
+        Button('最早添加').backgroundColor(this.inboxSortMode === 'oldest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'oldest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'oldest')
+        Button('名称').backgroundColor(this.inboxSortMode === 'title' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'title' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'title')
+        Button('手动').backgroundColor(this.inboxSortMode === 'manual' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'manual' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'manual')
+      }.width('100%')
+
       Button('开始')
         .id('start-button')
         .width('100%')
@@ -238,7 +295,7 @@ struct Index {
           .width('100%')
       }
 
-      if (this.inboxTasks.length === 0) {
+      if (this.visibleInboxTasks().length === 0) {
         Text('还没有记录任务。')
           .fontSize(16)
           .fontColor('#5F6B7A')
@@ -246,13 +303,29 @@ struct Index {
           .margin({ top: 24 })
       } else {
         List({ space: 10 }) {
-          ForEach(this.inboxTasks, (task: InboxTask) => {
+          ForEach(this.visibleInboxTasks(), (task: InboxTask) => {
             ListItem() {
               Column({ space: 10 }) {
                 Text(task.title)
                   .fontSize(17)
                   .fontWeight(FontWeight.Medium)
                   .width('100%')
+                Text(`${task.plannedMinutes} 分钟`)
+                  .fontSize(14)
+                  .fontColor('#5F6B7A')
+                if (this.editingTaskId === task.id) {
+                  TextInput({ placeholder: '任务名称', text: this.editingTitle }).height(44).backgroundColor('#FFFFFF').onChange((value: string) => this.editingTitle = value)
+                  Row({ space: 8 }) {
+                    Button('5').onClick(() => this.editingMinutes = '5')
+                    Button('10').onClick(() => this.editingMinutes = '10')
+                    Button('25').onClick(() => this.editingMinutes = '25')
+                    TextInput({ placeholder: '自定义分钟', text: this.editingMinutes }).layoutWeight(1).height(36).backgroundColor('#FFFFFF').onChange((value: string) => this.editingMinutes = value)
+                  }.width('100%')
+                  Row({ space: 8 }) {
+                    Button('保存').backgroundColor('#0A59F7').fontColor('#FFFFFF').onClick(() => this.saveEditing())
+                    Button('取消').onClick(() => this.editingTaskId = 0)
+                  }
+                }
                 Row({ space: 8 }) {
                   Button('设为下一件事')
                     .id(`choose-inbox-${task.id}`)
@@ -260,6 +333,11 @@ struct Index {
                     .backgroundColor('#E8EDF5')
                     .fontColor('#1F2937')
                     .onClick(() => this.chooseNextTask(task))
+                  Button('编辑').id(`edit-inbox-${task.id}`).onClick(() => this.startEditing(task))
+                  if (this.inboxSortMode === 'manual') {
+                    Button('上移').enabled(this.visibleInboxTasks().findIndex((item: InboxTask) => item.id === task.id) > 0).onClick(() => this.moveTask(task, -1))
+                    Button('下移').enabled(this.visibleInboxTasks().findIndex((item: InboxTask) => item.id === task.id) < this.visibleInboxTasks().length - 1).onClick(() => this.moveTask(task, 1))
+                  }
                   Button('删除')
                     .id(`delete-inbox-${task.id}`)
                     .backgroundColor('#FDECEC')
