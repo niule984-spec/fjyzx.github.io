@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@ohos/hypium';
 import { restoreFocusSession } from '../main/ets/focus/FocusSessionRecovery';
+import { needsPendingRecord } from '../main/ets/focus/FocusResultPersistence';
 
 export default function focusSessionRecoveryTest() {
   describe('focus session recovery', () => {
@@ -45,6 +46,32 @@ export default function focusSessionRecoveryTest() {
       }, 820_000);
 
       expect(restored.durationSeconds).assertEqual(600);
+    });
+
+    it('retries an interrupted result record creation without returning to running', 0, () => {
+      expect(needsPendingRecord({
+        taskName: '整理资料',
+        durationMinutes: 5,
+        remainingSeconds: 0,
+        targetEndTime: 0,
+        isRunning: false,
+        pageState: 'result',
+        pendingRecordId: 0,
+        resultKey: 'result-1'
+      })).assertTrue();
+    });
+
+    it('does not create another record after the pending record id is saved', 0, () => {
+      expect(needsPendingRecord({
+        taskName: '整理资料',
+        durationMinutes: 5,
+        remainingSeconds: 0,
+        targetEndTime: 0,
+        isRunning: false,
+        pageState: 'result',
+        pendingRecordId: 42,
+        resultKey: 'result-1'
+      })).assertFalse();
     });
   });
 }

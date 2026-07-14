@@ -21,6 +21,7 @@ export interface PendingFocusRecord {
   actualSeconds: number;
   endedAt: number;
   outcome: FocusOutcome;
+  resultKey: string;
 }
 
 export interface ActiveSession {
@@ -31,6 +32,7 @@ export interface ActiveSession {
   isRunning: boolean;
   pageState: 'running' | 'paused' | 'result';
   pendingRecordId: number;
+  resultKey: string;
 }
 
 export interface TodayReview {

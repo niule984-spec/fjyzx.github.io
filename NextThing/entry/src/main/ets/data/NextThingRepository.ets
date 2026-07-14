@@ -8,7 +8,8 @@ const STORE_CONFIG: relationalStore.StoreConfig = {
 };
 
 const CREATE_INBOX = 'CREATE TABLE IF NOT EXISTS inbox_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, created_at INTEGER NOT NULL)';
-const CREATE_RECORD = 'CREATE TABLE IF NOT EXISTS focus_records (id INTEGER PRIMARY KEY AUTOINCREMENT, task_title TEXT NOT NULL, planned_minutes INTEGER NOT NULL, actual_seconds INTEGER NOT NULL, ended_at INTEGER NOT NULL, outcome TEXT NOT NULL)';
+const CREATE_RECORD = 'CREATE TABLE IF NOT EXISTS focus_records (id INTEGER PRIMARY KEY AUTOINCREMENT, task_title TEXT NOT NULL, planned_minutes INTEGER NOT NULL, actual_seconds INTEGER NOT NULL, ended_at INTEGER NOT NULL, outcome TEXT NOT NULL, result_key TEXT NOT NULL DEFAULT \'\')';
+const ADD_RESULT_KEY = 'ALTER TABLE focus_records ADD COLUMN result_key TEXT NOT NULL DEFAULT \'\'';
 const CREATE_STATE = 'CREATE TABLE IF NOT EXISTS app_state (state_key TEXT PRIMARY KEY, state_value TEXT NOT NULL)';
 
 export function normalizeTaskTitle(title: string): string {
@@ -22,6 +23,11 @@ export class NextThingRepository {
     this.store = await relationalStore.getRdbStore(context, STORE_CONFIG);
     await this.store.executeSql(CREATE_INBOX);
     await this.store.executeSql(CREATE_RECORD);
+    try {
+      await this.store.executeSql(ADD_RESULT_KEY);
+    } catch (_error) {
+      // Existing databases already contain this column.
+    }
     await this.store.executeSql(CREATE_STATE);
   }
 
@@ -67,8 +73,20 @@ export class NextThingRepository {
   async createPendingRecord(record: PendingFocusRecord): Promise<number> {
     return await this.getStore().insert('focus_records', {
       task_title: record.taskTitle, planned_minutes: record.plannedMinutes,
-      actual_seconds: record.actualSeconds, ended_at: record.endedAt, outcome: record.outcome
+      actual_seconds: record.actualSeconds, ended_at: record.endedAt, outcome: record.outcome,
+      result_key: record.resultKey
     });
+  }
+
+  async findOrCreatePendingRecord(record: PendingFocusRecord): Promise<number> {
+    const cursor = await this.getStore().querySql('SELECT id FROM focus_records WHERE result_key = ? LIMIT 1', [record.resultKey]);
+    if (cursor.goToNextRow()) {
+      const id = cursor.getLong(0);
+      cursor.close();
+      return id;
+    }
+    cursor.close();
+    return this.createPendingRecord(record);
   }
 
   async updateRecordOutcome(id: number, outcome: FocusOutcome): Promise<void> {

@@ -10,6 +10,7 @@ import {
 import { appRepository } from '../data/AppRepository';
 import { ActiveSession, FocusOutcome } from '../data/PersistenceModels';
 import { restoreFocusSession } from '../focus/FocusSessionRecovery';
+import { needsPendingRecord } from '../focus/FocusResultPersistence';
 
 interface FocusTimerParams {
   taskName: string;
@@ -26,6 +27,8 @@ struct FocusTimer {
   @State pageState: string = 'running';
   private intervalId: number = -1;
   private pendingRecordId: number = 0;
+  private resultKey: string = '';
+  @State isCreatingResult: boolean = false;
 
   aboutToAppear(): void {
     const params = router.getParams() as FocusTimerParams;
@@ -34,6 +37,7 @@ struct FocusTimer {
     const restoredSession = this.readRestoredSession(params.restoredSession);
     if (restoredSession !== undefined) {
       this.pendingRecordId = restoredSession.pendingRecordId;
+      this.resultKey = restoredSession.resultKey ?? '';
       this.pageState = restoredSession.pageState;
       this.timer = restoreFocusSession({
         durationSeconds: this.durationMinutes * 60,
@@ -41,6 +45,10 @@ struct FocusTimer {
         targetEndTime: restoredSession.targetEndTime,
         isRunning: restoredSession.isRunning
       }, Date.now());
+      if (needsPendingRecord(restoredSession)) {
+        this.enterResult();
+        return;
+      }
       if (this.timer.remainingSeconds === 0 && this.pageState !== 'result') {
         this.enterResult();
         return;
@@ -118,33 +126,49 @@ struct FocusTimer {
   }
 
   private enterResult(): void {
+    if (this.pageState === 'result' && (this.pendingRecordId !== 0 || this.isCreatingResult)) {
+      return;
+    }
     this.pageState = 'result';
     this.stopTicker();
-    if (this.pendingRecordId === 0) {
-      appRepository.createPendingRecord({
+    if (this.pendingRecordId !== 0) {
+      this.saveSession();
+      return;
+    }
+    this.isCreatingResult = true;
+    if (this.resultKey.length === 0) {
+      this.resultKey = `result-${Date.now()}`;
+    }
+    this.persistSession().then(() => {
+      return appRepository.findOrCreatePendingRecord({
         taskTitle: this.taskName,
         plannedMinutes: this.durationMinutes,
         actualSeconds: this.timer.durationSeconds - this.timer.remainingSeconds,
         endedAt: Date.now(),
-        outcome: 'pending'
-      }).then((id: number) => {
-        this.pendingRecordId = id;
-        this.saveSession();
+        outcome: 'pending',
+        resultKey: this.resultKey
       });
-      return;
-    }
-    this.saveSession();
+    }).then((id: number) => {
+      this.pendingRecordId = id;
+      this.isCreatingResult = false;
+      this.saveSession();
+    });
   }
 
   private saveSession(): void {
-    appRepository.saveActiveSession({
+    this.persistSession();
+  }
+
+  private persistSession(): Promise<void> {
+    return appRepository.saveActiveSession({
       taskName: this.taskName,
       durationMinutes: this.durationMinutes,
       remainingSeconds: this.timer.remainingSeconds,
       targetEndTime: this.timer.targetEndTime,
       isRunning: this.timer.isRunning,
       pageState: this.pageState === 'result' ? 'result' : (this.timer.isRunning ? 'running' : 'paused'),
-      pendingRecordId: this.pendingRecordId
+      pendingRecordId: this.pendingRecordId,
+      resultKey: this.resultKey
     });
   }
 
@@ -173,6 +197,7 @@ struct FocusTimer {
 
         Button('完成了')
           .id('completed-button')
+          .enabled(!this.isCreatingResult)
           .width('100%')
           .height(48)
           .backgroundColor('#16794C')
@@ -183,6 +208,7 @@ struct FocusTimer {
 
         Button('还没完成')
           .id('unfinished-button')
+          .enabled(!this.isCreatingResult)
           .width('100%')
           .height(48)
           .backgroundColor('#E8EDF5')
@@ -193,6 +219,7 @@ struct FocusTimer {
 
         Button('换一件事')
           .id('change-task-button')
+          .enabled(!this.isCreatingResult)
           .width('100%')
           .height(48)
           .backgroundColor('#E8EDF5')
