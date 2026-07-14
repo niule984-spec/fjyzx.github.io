@@ -252,7 +252,8 @@ struct Index {
 
   @Builder
   private inboxTab(): void {
-    Column({ space: 16 }) {
+    Scroll() {
+      Column({ space: 16 }) {
       Text('清空脑袋')
         .fontSize(28)
         .fontWeight(FontWeight.Bold)
@@ -261,6 +262,12 @@ struct Index {
         .fontSize(16)
         .fontColor('#5F6B7A')
         .width('100%')
+      TextInput({ placeholder: '搜索任务', text: this.inboxSearch })
+        .id('inbox-search')
+        .width('100%')
+        .height(44)
+        .backgroundColor('#F3F5F8')
+        .onChange((value: string) => this.inboxSearch = value)
       Row({ space: 8 }) {
         TextInput({ placeholder: '输入想到的任务', text: this.inboxDraft })
           .id('inbox-input')
@@ -296,13 +303,6 @@ struct Index {
         .backgroundColor('#F3F5F8')
         .onChange((value: string) => this.inboxDraftMinutes = value)
 
-      TextInput({ placeholder: '搜索任务', text: this.inboxSearch })
-        .id('inbox-search')
-        .width('100%')
-        .height(44)
-        .backgroundColor('#F3F5F8')
-        .onChange((value: string) => this.inboxSearch = value)
-
       Row({ space: 8 }) {
         Button('最近添加').layoutWeight(1).backgroundColor(this.inboxSortMode === 'newest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'newest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'newest')
         Button('最早添加').layoutWeight(1).backgroundColor(this.inboxSortMode === 'oldest' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxSortMode === 'oldest' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxSortMode = 'oldest')
@@ -325,10 +325,9 @@ struct Index {
           .width('100%')
           .margin({ top: 24 })
       } else {
-        List({ space: 10 }) {
+        Column({ space: 10 }) {
           ForEach(this.visibleInboxTasks(), (task: InboxTask) => {
-            ListItem() {
-              Column({ space: 10 }) {
+            Column({ space: 10 }) {
                 Text(task.title)
                   .fontSize(17)
                   .fontWeight(FontWeight.Medium)
@@ -373,21 +372,22 @@ struct Index {
                     .onClick(() => this.deleteInboxTask(task.id))
                 }
                 .width('100%')
-              }
-              .width('100%')
-              .padding(16)
-              .backgroundColor('#F8FAFC')
-              .borderRadius(6)
             }
+            .width('100%')
+            .padding(16)
+            .backgroundColor('#F8FAFC')
+            .borderRadius(6)
           }, (task: InboxTask) => task.id.toString())
         }
         .width('100%')
-        .layoutWeight(1)
       }
+      }
+      .width('100%')
+      .padding({ left: 24, right: 24, top: 24, bottom: 24 })
     }
     .width('100%')
     .height('100%')
-    .padding({ left: 24, right: 24, top: 24, bottom: 12 })
+    .scrollBar(BarState.Auto)
   }
 
   @Builder
