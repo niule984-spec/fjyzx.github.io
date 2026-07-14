@@ -13,6 +13,7 @@ struct Index {
   @State feedback: string = '';
   @State selectedTab: number = 0;
   @State inboxDraft: string = '';
+  @State inboxDraftMinutes: string = '25';
   @State inboxTasks: InboxTask[] = [];
   @State inboxFeedback: string = '';
   @State inboxSearch: string = '';
@@ -89,12 +90,14 @@ struct Index {
 
   private addInboxTask(): void {
     const result = validateTaskTitle(this.inboxDraft);
-    if (!result.isValid) {
+    const minutes = validatePlannedMinutes(this.inboxDraftMinutes);
+    if (!result.isValid || minutes === undefined) {
       this.inboxFeedback = '请输入任务内容。';
       return;
     }
-    appRepository.addInboxTask(result.taskTitle).then(() => {
+    appRepository.addInboxTask(result.taskTitle, minutes).then(() => {
       this.inboxDraft = '';
+      this.inboxDraftMinutes = '25';
       this.inboxFeedback = '';
       this.loadInbox();
     }).catch(() => {
@@ -273,6 +276,22 @@ struct Index {
       }
       .width('100%')
 
+      Text('预计时长')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      Row({ space: 8 }) {
+        Button('5 分钟').layoutWeight(1).backgroundColor(this.inboxDraftMinutes === '5' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxDraftMinutes === '5' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxDraftMinutes = '5')
+        Button('10 分钟').layoutWeight(1).backgroundColor(this.inboxDraftMinutes === '10' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxDraftMinutes === '10' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxDraftMinutes = '10')
+        Button('25 分钟').layoutWeight(1).backgroundColor(this.inboxDraftMinutes === '25' ? '#0A59F7' : '#E8EDF5').fontColor(this.inboxDraftMinutes === '25' ? '#FFFFFF' : '#1F2937').onClick(() => this.inboxDraftMinutes = '25')
+      }.width('100%')
+      TextInput({ placeholder: '自定义分钟数', text: this.inboxDraftMinutes })
+        .id('inbox-minutes-input')
+        .width('100%')
+        .height(44)
+        .backgroundColor('#F3F5F8')
+        .onChange((value: string) => this.inboxDraftMinutes = value)
+
       TextInput({ placeholder: '搜索任务', text: this.inboxSearch })
         .id('inbox-search')
         .width('100%')
@@ -316,11 +335,16 @@ struct Index {
                 if (this.editingTaskId === task.id) {
                   TextInput({ placeholder: '任务名称', text: this.editingTitle }).height(44).backgroundColor('#FFFFFF').onChange((value: string) => this.editingTitle = value)
                   Row({ space: 8 }) {
-                    Button('5').onClick(() => this.editingMinutes = '5')
-                    Button('10').onClick(() => this.editingMinutes = '10')
-                    Button('25').onClick(() => this.editingMinutes = '25')
-                    TextInput({ placeholder: '自定义分钟', text: this.editingMinutes }).layoutWeight(1).height(36).backgroundColor('#FFFFFF').onChange((value: string) => this.editingMinutes = value)
+                    Button('5 分钟').layoutWeight(1).onClick(() => this.editingMinutes = '5')
+                    Button('10 分钟').layoutWeight(1).onClick(() => this.editingMinutes = '10')
+                    Button('25 分钟').layoutWeight(1).onClick(() => this.editingMinutes = '25')
                   }.width('100%')
+                  TextInput({ placeholder: '自定义分钟数', text: this.editingMinutes })
+                    .id(`edit-minutes-${task.id}`)
+                    .width('100%')
+                    .height(44)
+                    .backgroundColor('#FFFFFF')
+                    .onChange((value: string) => this.editingMinutes = value)
                   Row({ space: 8 }) {
                     Button('保存').backgroundColor('#0A59F7').fontColor('#FFFFFF').onClick(() => this.saveEditing())
                     Button('取消').onClick(() => this.editingTaskId = 0)
