@@ -12,7 +12,7 @@ export default function reviewCalculatorTest() {
       expect(review.sessionCount).assertEqual(3);
       expect(review.actualMinutes).assertEqual(21);
       expect(review.completedCount).assertEqual(1);
-      expect(review.unfinishedCount).assertEqual(1);
+      expect(review.unfinishedCount).assertEqual(2);
     });
 
     it('formats a local calendar day', 0, () => {

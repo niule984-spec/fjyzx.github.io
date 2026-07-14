@@ -22,7 +22,7 @@ export function calculateTodayReview(records: ReviewRecord[]): TodayReview {
     if (record.outcome === 'completed') {
       completedCount++;
     }
-    if (record.outcome === 'unfinished') {
+    if (record.outcome === 'unfinished' || record.outcome === 'changed') {
       unfinishedCount++;
     }
   });
