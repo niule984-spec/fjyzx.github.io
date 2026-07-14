@@ -8,6 +8,7 @@ import {
   resumeFocusTimer
 } from '../focus/FocusTimerEngine';
 import { appRepository } from '../data/AppRepository';
+import { parseActiveSession } from '../data/NextThingRepository';
 import { ActiveSession, FocusOutcome } from '../data/PersistenceModels';
 import { restoreFocusSession } from '../focus/FocusSessionRecovery';
 import { needsPendingRecord } from '../focus/FocusResultPersistence';
@@ -126,7 +127,7 @@ struct FocusTimer {
     if (value === undefined || value.length === 0) {
       return undefined;
     }
-    return JSON.parse(value) as ActiveSession;
+    return parseActiveSession(value);
   }
 
   private enterResult(): void {

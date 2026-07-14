@@ -28,6 +28,8 @@ struct Index {
           restoredSession: JSON.stringify(session)
         }
       });
+    }).catch(() => {
+      this.feedback = '读取已保存任务失败，请继续使用首页';
     });
   }
 

@@ -90,5 +90,16 @@ export default function focusSessionRecoveryTest() {
     it('ignores corrupted active session data', 0, () => {
       expect(parseActiveSession('{broken')).assertEqual(undefined);
     });
+
+    it('accepts a complete active session with valid runtime values', 0, () => {
+      const session = parseActiveSession('{"taskName":"整理资料","durationMinutes":5,"remainingSeconds":180,"targetEndTime":1000000,"isRunning":true,"pageState":"running","pendingRecordId":0,"resultKey":""}');
+      expect(session === undefined).assertFalse();
+    });
+
+    it('rejects invalid active session field types, ranges, and page state', 0, () => {
+      expect(parseActiveSession('{"taskName":42,"durationMinutes":5,"remainingSeconds":180,"targetEndTime":0,"isRunning":false,"pageState":"paused","pendingRecordId":0,"resultKey":""}')).assertEqual(undefined);
+      expect(parseActiveSession('{"taskName":"整理资料","durationMinutes":5,"remainingSeconds":-1,"targetEndTime":0,"isRunning":false,"pageState":"paused","pendingRecordId":0,"resultKey":""}')).assertEqual(undefined);
+      expect(parseActiveSession('{"taskName":"整理资料","durationMinutes":5,"remainingSeconds":180,"targetEndTime":0,"isRunning":false,"pageState":"invalid","pendingRecordId":0,"resultKey":""}')).assertEqual(undefined);
+    });
   });
 }

@@ -13,12 +13,45 @@ const ADD_RESULT_KEY = 'ALTER TABLE focus_records ADD COLUMN result_key TEXT NOT
 const CREATE_RESULT_KEY_INDEX = 'CREATE UNIQUE INDEX IF NOT EXISTS idx_focus_records_result_key ON focus_records(result_key) WHERE result_key <> \'\'';
 const CREATE_STATE = 'CREATE TABLE IF NOT EXISTS app_state (state_key TEXT PRIMARY KEY, state_value TEXT NOT NULL)';
 
+interface ActiveSessionCandidate {
+  taskName?: string;
+  durationMinutes?: number;
+  remainingSeconds?: number;
+  targetEndTime?: number;
+  isRunning?: boolean;
+  pageState?: string;
+  pendingRecordId?: number;
+  resultKey?: string;
+}
+
+function isNonNegativeInteger(value: number): boolean {
+  return Number.isFinite(value) && value >= 0 && Math.floor(value) === value;
+}
+
 export function parseActiveSession(value: string): ActiveSession | undefined {
   if (value.length === 0) {
     return undefined;
   }
   try {
-    return JSON.parse(value) as ActiveSession;
+    const candidate = JSON.parse(value) as ActiveSessionCandidate;
+    if (candidate === null || typeof candidate !== 'object') {
+      return undefined;
+    }
+    const durationMinutes = candidate.durationMinutes;
+    const remainingSeconds = candidate.remainingSeconds;
+    const targetEndTime = candidate.targetEndTime;
+    const pendingRecordId = candidate.pendingRecordId;
+    const isValidPageState = candidate.pageState === 'running' || candidate.pageState === 'paused' || candidate.pageState === 'result';
+    const hasValidDuration = typeof durationMinutes === 'number' && isNonNegativeInteger(durationMinutes) && durationMinutes > 0;
+    const hasValidRemaining = typeof remainingSeconds === 'number' && isNonNegativeInteger(remainingSeconds) && typeof durationMinutes === 'number' && remainingSeconds <= durationMinutes * 60;
+    const hasValidTarget = typeof targetEndTime === 'number' && isNonNegativeInteger(targetEndTime) && (!candidate.isRunning || targetEndTime > 0);
+    if (typeof candidate.taskName !== 'string' || !hasValidDuration || !hasValidRemaining || !hasValidTarget ||
+      typeof candidate.isRunning !== 'boolean' || !isValidPageState ||
+      typeof pendingRecordId !== 'number' || !isNonNegativeInteger(pendingRecordId) ||
+      typeof candidate.resultKey !== 'string') {
+      return undefined;
+    }
+    return candidate as ActiveSession;
   } catch (_error) {
     return undefined;
   }
