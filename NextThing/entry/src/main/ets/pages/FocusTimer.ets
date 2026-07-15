@@ -1,4 +1,5 @@
 import router from '@ohos.router';
+import preferences from '@ohos.data.preferences';
 import {
   createFocusTimer,
   FocusTimerState,
@@ -7,10 +8,11 @@ import {
   refreshFocusTimer,
   resumeFocusTimer
 } from '../focus/FocusTimerEngine';
+import { FocusPageState, FocusSession, restoreFocusSession } from '../focus/FocusSession';
+import { FocusSessionStore } from '../focus/FocusSessionStore';
 
 interface FocusTimerParams {
-  taskName: string;
-  durationMinutes: number;
+  session?: FocusSession;
 }
 
 @Entry
@@ -19,16 +21,19 @@ struct FocusTimer {
   @State taskName: string = '';
   @State durationMinutes: number = 0;
   @State timer: FocusTimerState = createFocusTimer(0, 0);
-  @State pageState: string = 'running';
+  @State pageState: FocusPageState = 'running';
   private intervalId: number = -1;
+  private focusSessionStore: FocusSessionStore | undefined = undefined;
+  private shouldPersist: boolean = true;
 
   aboutToAppear(): void {
-    const params = router.getParams() as FocusTimerParams;
-    this.taskName = params.taskName;
-    this.durationMinutes = params.durationMinutes;
-    this.timer = createFocusTimer(this.durationMinutes, Date.now());
-    this.pageState = this.timer.isRunning ? 'running' : 'result';
-    if (this.pageState === 'running') {
+    this.shouldPersist = true;
+    if (!this.restoreSession()) {
+      router.replaceUrl({ url: 'pages/Index' });
+      return;
+    }
+
+    if (this.pageState === 'running' && this.timer.isRunning) {
       this.startTicker();
     }
   }
@@ -42,6 +47,53 @@ struct FocusTimer {
 
   aboutToDisappear(): void {
     this.stopTicker();
+    if (this.shouldPersist) {
+      this.persistSession();
+    }
+  }
+
+  private getSessionStore(): FocusSessionStore | undefined {
+    if (this.focusSessionStore !== undefined) {
+      return this.focusSessionStore;
+    }
+
+    try {
+      const preference = preferences.getPreferencesSync(getContext(this), { name: 'nextthing_focus_session' });
+      this.focusSessionStore = new FocusSessionStore(preference);
+      return this.focusSessionStore;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
+  private toSession(): FocusSession {
+    return {
+      taskName: this.taskName,
+      durationMinutes: this.durationMinutes,
+      timer: this.timer,
+      pageState: this.pageState
+    };
+  }
+
+  private persistSession(): void {
+    this.getSessionStore()?.save(this.toSession());
+  }
+
+  private restoreSession(): boolean {
+    const params = router.getParams() as FocusTimerParams;
+    const storedSession = this.getSessionStore()?.load();
+    const sourceSession = storedSession ?? params.session;
+    if (sourceSession === undefined) {
+      return false;
+    }
+
+    const session = restoreFocusSession(sourceSession, Date.now());
+    this.taskName = session.taskName;
+    this.durationMinutes = session.durationMinutes;
+    this.timer = session.timer;
+    this.pageState = session.pageState;
+    this.persistSession();
+    return true;
   }
 
   private refreshTimer(): void {
@@ -49,6 +101,7 @@ struct FocusTimer {
     if (this.timer.remainingSeconds === 0) {
       this.pageState = 'result';
       this.stopTicker();
+      this.persistSession();
     }
   }
 
@@ -70,10 +123,12 @@ struct FocusTimer {
     if (this.timer.isRunning) {
       this.timer = pauseFocusTimer(this.timer, Date.now());
       this.stopTicker();
+      this.persistSession();
       return;
     }
 
     this.timer = resumeFocusTimer(this.timer, Date.now());
+    this.persistSession();
     this.startTicker();
   }
 
@@ -81,10 +136,13 @@ struct FocusTimer {
     this.timer = pauseFocusTimer(this.timer, Date.now());
     this.pageState = 'result';
     this.stopTicker();
+    this.persistSession();
   }
 
   private returnHome(): void {
     this.stopTicker();
+    this.shouldPersist = false;
+    this.getSessionStore()?.clear();
     router.replaceUrl({ url: 'pages/Index' });
   }
 

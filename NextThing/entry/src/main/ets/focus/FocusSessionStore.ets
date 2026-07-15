@@ -4,7 +4,11 @@ import { decodeFocusSession, encodeFocusSession, FocusSession } from './FocusSes
 const ACTIVE_SESSION_KEY = 'active_focus_session';
 
 export class FocusSessionStore {
-  constructor(private readonly preferences: preferences.Preferences) {}
+  private readonly preferences: preferences.Preferences;
+
+  constructor(preferences: preferences.Preferences) {
+    this.preferences = preferences;
+  }
 
   load(): FocusSession | null {
     try {
