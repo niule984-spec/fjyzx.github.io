@@ -2,6 +2,7 @@ import { describe, expect, it } from '@ohos/hypium';
 import {
   createFocusSession,
   decodeFocusSession,
+  encodeFocusSession,
   restoreFocusSession
 } from '../main/ets/focus/FocusSession';
 import { pauseFocusTimer } from '../main/ets/focus/FocusTimerEngine';
@@ -43,6 +44,14 @@ export default function focusSessionTest() {
     it('rejects malformed and structurally invalid session data', 0, () => {
       expect(decodeFocusSession('not-json') === null).assertTrue();
       expect(decodeFocusSession('{"taskName":"","durationMinutes":5}') === null).assertTrue();
+    });
+
+    it('round-trips a valid focus session', 0, () => {
+      const session = createFocusSession('阅读计划书', 25, 1_000);
+      const decoded = decodeFocusSession(encodeFocusSession(session));
+      expect(decoded === null).assertFalse();
+      expect(decoded?.taskName).assertEqual('阅读计划书');
+      expect(decoded?.timer.targetEndTime).assertEqual(1_501_000);
     });
   });
 }

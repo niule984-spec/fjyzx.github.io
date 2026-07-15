@@ -30,6 +30,10 @@ export function restoreFocusSession(session: FocusSession, now: number): FocusSe
   };
 }
 
+export function encodeFocusSession(session: FocusSession): string {
+  return JSON.stringify(session);
+}
+
 export function decodeFocusSession(raw: string): FocusSession | null {
   try {
     const value = JSON.parse(raw) as FocusSession;
