@@ -1,5 +1,8 @@
 import { validateTaskTitle } from '../home/HomePageValidation';
 import router from '@ohos.router';
+import preferences from '@ohos.data.preferences';
+import { createFocusSession } from '../focus/FocusSession';
+import { FocusSessionStore } from '../focus/FocusSessionStore';
 
 @Entry
 @Component
@@ -7,6 +10,28 @@ struct Index {
   @State taskTitle: string = '';
   @State selectedMinutes: number = 25;
   @State feedback: string = '';
+  private focusSessionStore: FocusSessionStore | undefined = undefined;
+
+  aboutToAppear(): void {
+    const session = this.getSessionStore()?.load();
+    if (session !== null && session !== undefined) {
+      router.replaceUrl({ url: 'pages/FocusTimer', params: { session } });
+    }
+  }
+
+  private getSessionStore(): FocusSessionStore | undefined {
+    if (this.focusSessionStore !== undefined) {
+      return this.focusSessionStore;
+    }
+
+    try {
+      const preference = preferences.getPreferencesSync(getContext(this), { name: 'nextthing_focus_session' });
+      this.focusSessionStore = new FocusSessionStore(preference);
+      return this.focusSessionStore;
+    } catch (_) {
+      return undefined;
+    }
+  }
 
   private selectDuration(minutes: number): void {
     this.selectedMinutes = minutes;
@@ -20,11 +45,12 @@ struct Index {
       return;
     }
 
+    const session = createFocusSession(result.taskTitle, this.selectedMinutes, Date.now());
+    this.getSessionStore()?.save(session);
     router.pushUrl({
       url: 'pages/FocusTimer',
       params: {
-        taskName: result.taskTitle,
-        durationMinutes: this.selectedMinutes
+        session
       }
     });
   }
