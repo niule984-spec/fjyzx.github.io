@@ -62,6 +62,13 @@ Task 5 已完成 build/install/start 验证。Task 6 已将首页文本设置为
 - DevEco Studio GUI close/reopen 未由 UI Automation 完成，保留为人工 smoke test；本记录不声称 GUI 已通过。
 - 本阶段未加入计时器、任务列表、Preferences、RDB、通知、后端或额外依赖。
 
+## 本地数据与今日回顾验收记录（2026-07-14）
+
+- 在 ASCII 工作树 `C:\Users\zhaoxin\codex-worktrees\next-thing-persistence-review\NextThing` 执行 `hvigor --no-daemon clean` 和 `hvigor --no-daemon assembleApp -p product=default`，两条命令均以 `BUILD SUCCESSFUL` 结束。
+- 本次构建产物为 `entry\build\default\outputs\default\entry-default-unsigned.hap`。
+- 尝试连接 API 24 模拟器前执行 `hdc list targets`，命令返回为空；因此本次未执行 HAP 安装、应用启动或界面交互验收。
+- 本次记录不宣称已在模拟器验证任务保存、会话恢复、清空脑袋或今日回顾的运行时行为。
+
 ## 专注计时验收记录（2026-07-13）
 
 - 首页已将任务名称和 5/10/25 分钟时长传递给专注计时页。
