@@ -1,88 +1,50 @@
-# Focus Live Notification Design
+# 专注实况通知设计
 
-## Scope
+## 范围
 
-Show the active focus session in the HarmonyOS notification area while keeping
-the existing timer and local session persistence behavior unchanged. The
-notification opens the application when tapped and is removed when the focus
-session ends or the user selects an outcome.
+在不改变现有计时器和本地会话持久化行为的前提下，在 HarmonyOS 通知栏中展示当前专注会话。点按通知会打开应用；专注结束或用户选择结果后，通知会被移除。
 
-This change does not add cloud messaging, notification history, a persistent
-background timer service, or direct notification-bar pause and end actions.
+本次不加入云消息、通知历史、常驻后台计时服务，也不在通知栏直接提供暂停或结束操作。
 
-## Platform Boundary
+## 平台边界
 
-The API 24 SDK marks `NotificationSystemLiveViewContent` as system-proxy-only:
-a third-party application cannot create a system live view directly. NextThing
-is a normal third-party application, so it must not publish that privileged
-content type or promise a capsule/live-window presentation.
+API 24 SDK 将 `NotificationSystemLiveViewContent` 标记为仅能由系统代理创建：第三方应用无法直接创建系统实况窗。`NextThing` 是普通第三方应用，因此不能发布该特权内容类型，也不能承诺一定显示胶囊或实况窗。
 
-The app publishes an ongoing standard notification. If a device or system
-service chooses to associate the notification with a system live presentation,
-the app continues to update the same notification ID. On systems that do not,
-the standard notification is the complete, supported fallback.
+应用会发布一条常驻普通通知。如果设备或系统服务选择将该通知关联到系统实况展示，应用会持续更新同一通知 ID；不支持时，普通通知就是完整且受支持的降级展示。
 
-## Notification Content
+## 通知内容
 
-One fixed notification ID represents the one active focus session.
+使用一个固定通知 ID 表示唯一的活动专注会话。
 
-- Running: title `正在专注`; text contains the task name and `专注至 HH:mm`.
-- Paused: title `专注已暂停`; text contains the task name and the exact
-  remaining `mm:ss`.
-- Result: the notification is cancelled instead of publishing a completed
-  summary.
+- 运行中：标题为 `正在专注`，正文包含任务名称和 `专注至 HH:mm`。
+- 已暂停：标题为 `专注已暂停`，正文包含任务名称和精确的剩余 `mm:ss`。
+- 结果页：取消通知，不发布完成摘要。
 
-The standard fallback deliberately displays the absolute end time while
-running rather than a countdown that could become stale after the app enters
-the background. A system-rendered live presentation may render its own time or
-progress according to device capability, but that presentation is not under
-application control.
+普通通知在运行时刻意展示绝对结束时间，而不是应用进入后台后可能过时的倒计时。系统渲染的实况展示可以根据设备能力渲染自己的时间或进度，但该展示不受应用直接控制。
 
-Tapping the notification opens `EntryAbility`. The existing home-page recovery
-logic reads the saved session and routes to the focus timer page.
+点按通知会打开 `EntryAbility`。现有首页恢复逻辑会读取已保存的会话并进入专注计时页。
 
-## Components And Lifecycle
+## 组件与生命周期
 
-`focus/FocusNotificationCoordinator.ets` owns notification permissions and
-the notification manager calls. It accepts a `FocusSession`, maps it to a
-standard notification request, publishes the request using the fixed ID, and
-cancels that ID. It catches notification permission and publishing errors so
-the timer remains usable when notifications are unavailable.
+`focus/FocusNotificationCoordinator.ets` 负责通知权限和通知管理器调用。它接收 `FocusSession`，将其映射为普通通知请求，使用固定 ID 发布通知，并取消该 ID。它会捕获通知权限和发布错误，保证通知不可用时计时器仍可使用。
 
-`FocusTimer.ets` remains the source of timer state. It calls the coordinator
-when a session is restored, paused, resumed, ended early, reaches zero, or
-leaves the page. It does not republish on each one-second screen refresh.
-`Index.ets` requests notification permission only when the user starts a new
-focus session; rejection or failure does not block navigation.
+`FocusTimer.ets` 仍是计时状态的唯一来源。在恢复会话、暂停、继续、提前结束、归零或离开页面时调用协调器同步通知；不会在每秒屏幕刷新时重复发布。`Index.ets` 仅在用户开始一个新专注会话时请求通知权限；用户拒绝或请求失败均不阻止页面跳转。
 
-The coordinator republishing a restored session keeps the notification aligned
-with the persisted timer after an app restart. Cancelling occurs before the
-result actions return home, preventing `aboutToDisappear` from recreating it.
+协调器在恢复会话后重新发布通知，使应用重启后的通知与持久化计时器保持一致。取消操作发生在结果操作返回首页之前，避免 `aboutToDisappear` 再次创建通知。
 
-## Permission And Failure Behavior
+## 权限与失败行为
 
-The app requests notification permission at the first user-initiated focus
-start. It does not repeatedly prompt during resume, recovery, pause, or end.
+应用在用户首次主动开始专注时请求通知权限，不会在恢复、暂停、结束或重启过程中反复弹窗。
 
-If permission is denied, the notification manager rejects publishing, or the
-device does not offer a live presentation, the focus timer and local session
-continue normally. The iteration adds no in-app error banner for notification
-failures.
+当用户拒绝权限、通知管理器拒绝发布，或设备无法提供实况展示时，专注计时器和本地会话仍正常运行。本次不为通知失败新增应用内错误提示。
 
-## Testing And Verification
+## 测试与验证
 
-Pure notification mapping is covered by Hypium test source for running,
-paused, and result states. The current project exposes no local Hypium runner,
-so the API 24 simulator is also required to verify:
+为运行中、暂停和结果状态的通知映射新增 Hypium 测试源码。当前工程没有本地 Hypium 运行器，因此还需要使用 API 24 模拟器验证：
 
-1. Starting a task publishes the ongoing notification with task name and end
-   time.
-2. Pausing changes the notification to the paused content and fixed remaining
-   time.
-3. Resuming restores the running content.
-4. Ending early, natural completion, and choosing any result action remove the
-   notification.
-5. Restarting an active or paused session republishes its matching
-   notification.
-6. A notification permission denial leaves the timer and session recovery
-   functional.
+1. 开始任务后发布带任务名称和结束时间的常驻通知。
+2. 暂停后通知变为暂停内容并显示固定剩余时间。
+3. 继续后恢复运行中内容。
+4. 提前结束、自然完成和选择任一结果后均移除通知。
+5. 重启运行中或暂停的会话后，重新发布对应状态的通知。
+6. 拒绝通知权限后，计时器和会话恢复仍保持正常。
