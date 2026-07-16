@@ -10,6 +10,8 @@ import {
 } from '../focus/FocusTimerEngine';
 import { FocusPageState, FocusSession, restoreFocusSession } from '../focus/FocusSession';
 import { FocusSessionStore } from '../focus/FocusSessionStore';
+import { common } from '@kit.AbilityKit';
+import { FocusNotificationCoordinator } from '../focus/FocusNotificationCoordinator';
 
 interface FocusTimerParams {
   session?: FocusSession;
@@ -25,6 +27,7 @@ struct FocusTimer {
   private intervalId: number = -1;
   private focusSessionStore: FocusSessionStore | undefined = undefined;
   private shouldPersist: boolean = true;
+  private focusNotificationCoordinator: FocusNotificationCoordinator | undefined = undefined;
 
   aboutToAppear(): void {
     this.shouldPersist = true;
@@ -66,6 +69,16 @@ struct FocusTimer {
     }
   }
 
+  private getNotificationCoordinator(): FocusNotificationCoordinator | undefined {
+    if (this.focusNotificationCoordinator !== undefined) return this.focusNotificationCoordinator;
+    try {
+      this.focusNotificationCoordinator = new FocusNotificationCoordinator(getContext(this) as common.UIAbilityContext);
+      return this.focusNotificationCoordinator;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
   private toSession(): FocusSession {
     return {
       taskName: this.taskName,
@@ -76,7 +89,9 @@ struct FocusTimer {
   }
 
   private persistSession(): void {
-    this.getSessionStore()?.save(this.toSession());
+    const session = this.toSession();
+    this.getSessionStore()?.save(session);
+    this.getNotificationCoordinator()?.sync(session);
   }
 
   private restoreSession(): boolean {
@@ -143,6 +158,7 @@ struct FocusTimer {
     this.stopTicker();
     this.shouldPersist = false;
     this.getSessionStore()?.clear();
+    this.getNotificationCoordinator()?.cancel();
     router.replaceUrl({ url: 'pages/Index' });
   }
 

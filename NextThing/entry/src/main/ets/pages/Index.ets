@@ -3,6 +3,8 @@ import router from '@ohos.router';
 import preferences from '@ohos.data.preferences';
 import { createFocusSession } from '../focus/FocusSession';
 import { FocusSessionStore } from '../focus/FocusSessionStore';
+import { common } from '@kit.AbilityKit';
+import { FocusNotificationCoordinator } from '../focus/FocusNotificationCoordinator';
 
 @Entry
 @Component
@@ -11,6 +13,7 @@ struct Index {
   @State selectedMinutes: number = 25;
   @State feedback: string = '';
   private focusSessionStore: FocusSessionStore | undefined = undefined;
+  private focusNotificationCoordinator: FocusNotificationCoordinator | undefined = undefined;
 
   aboutToAppear(): void {
     const session = this.getSessionStore()?.load();
@@ -33,6 +36,16 @@ struct Index {
     }
   }
 
+  private getNotificationCoordinator(): FocusNotificationCoordinator | undefined {
+    if (this.focusNotificationCoordinator !== undefined) return this.focusNotificationCoordinator;
+    try {
+      this.focusNotificationCoordinator = new FocusNotificationCoordinator(getContext(this) as common.UIAbilityContext);
+      return this.focusNotificationCoordinator;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
   private selectDuration(minutes: number): void {
     this.selectedMinutes = minutes;
     this.feedback = '';
@@ -47,6 +60,8 @@ struct Index {
 
     const session = createFocusSession(result.taskTitle, this.selectedMinutes, Date.now());
     this.getSessionStore()?.save(session);
+    this.getNotificationCoordinator()?.requestPermission();
+    this.getNotificationCoordinator()?.sync(session);
     router.pushUrl({
       url: 'pages/FocusTimer',
       params: {
