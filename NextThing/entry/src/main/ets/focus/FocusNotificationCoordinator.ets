@@ -3,6 +3,7 @@ import notificationManager from '@ohos.notificationManager';
 import wantAgent from '@ohos.app.ability.wantAgent';
 import { FocusSession } from './FocusSession';
 import { createFocusNotificationPresentation, FOCUS_NOTIFICATION_ID } from './FocusNotification';
+import { ensureNotificationPermission } from './NotificationPermission';
 
 const BUNDLE_NAME = 'com.zhaoxin.nextthing';
 const ABILITY_NAME = 'EntryAbility';
@@ -15,11 +16,7 @@ export class FocusNotificationCoordinator {
   }
 
   async requestPermission(): Promise<void> {
-    try {
-      if (!notificationManager.isNotificationEnabledSync()) {
-        await notificationManager.requestEnableNotification(this.context);
-      }
-    } catch (_) {}
+    await this.ensurePermission();
   }
 
   async sync(session: FocusSession): Promise<void> {
@@ -28,6 +25,8 @@ export class FocusNotificationCoordinator {
       await this.cancel();
       return;
     }
+
+    if (!await this.ensurePermission()) return;
 
     try {
       const want: Want = { bundleName: BUNDLE_NAME, abilityName: ABILITY_NAME };
@@ -55,5 +54,12 @@ export class FocusNotificationCoordinator {
     try {
       await notificationManager.cancel(FOCUS_NOTIFICATION_ID);
     } catch (_) {}
+  }
+
+  private async ensurePermission(): Promise<boolean> {
+    return ensureNotificationPermission(
+      () => notificationManager.isNotificationEnabledSync(),
+      () => notificationManager.requestEnableNotification(this.context)
+    );
   }
 }

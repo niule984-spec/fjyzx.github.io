@@ -4,6 +4,11 @@ import { appRepository } from '../data/AppRepository';
 import { ActiveSession, FocusRecord, InboxSortMode, InboxTask, NextTask, TodayReview } from '../data/PersistenceModels';
 import { calculateTodayReview, formatReviewTime, reviewStatusLabel } from '../data/ReviewCalculator';
 import { filterInboxTasks, sortInboxTasks, validatePlannedMinutes } from '../inbox/TaskManagement';
+import preferences from '@ohos.data.preferences';
+import { common } from '@kit.AbilityKit';
+import { FocusSessionStore } from '../focus/FocusSessionStore';
+import { toActiveSession } from '../focus/LegacySessionMigration';
+import { FocusNotificationCoordinator } from '../focus/FocusNotificationCoordinator';
 
 @Entry
 @Component
@@ -30,6 +35,8 @@ struct Index {
   };
   @State reviewRecords: FocusRecord[] = [];
   @State reviewFeedback: string = '';
+  private legacySessionStore: FocusSessionStore | undefined = undefined;
+  private focusNotificationCoordinator: FocusNotificationCoordinator | undefined = undefined;
 
   aboutToAppear(): void {
     appRepository.loadNextTask().then((task: NextTask | undefined) => {
@@ -37,7 +44,7 @@ struct Index {
         this.taskTitle = task.title;
         this.selectedMinutes = task.plannedMinutes;
       }
-      return appRepository.loadActiveSession();
+      return this.loadOrMigrateActiveSession();
     }).then((session: ActiveSession | undefined) => {
       if (session === undefined) {
         return;
@@ -60,6 +67,57 @@ struct Index {
   private selectDuration(minutes: number): void {
     this.selectedMinutes = minutes;
     this.feedback = '';
+  }
+
+  private getLegacySessionStore(): FocusSessionStore | undefined {
+    if (this.legacySessionStore !== undefined) {
+      return this.legacySessionStore;
+    }
+    try {
+      const preference = preferences.getPreferencesSync(getContext(this), { name: 'nextthing_focus_session' });
+      this.legacySessionStore = new FocusSessionStore(preference);
+      return this.legacySessionStore;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
+  private getNotificationCoordinator(): FocusNotificationCoordinator | undefined {
+    if (this.focusNotificationCoordinator !== undefined) {
+      return this.focusNotificationCoordinator;
+    }
+    try {
+      this.focusNotificationCoordinator = new FocusNotificationCoordinator(getContext(this) as common.UIAbilityContext);
+      return this.focusNotificationCoordinator;
+    } catch (_) {
+      return undefined;
+    }
+  }
+
+  private loadOrMigrateActiveSession(): Promise<ActiveSession | undefined> {
+    return appRepository.loadActiveSession().then((rdbSession: ActiveSession | undefined) => {
+      if (rdbSession !== undefined) {
+        this.getLegacySessionStore()?.clear();
+        return rdbSession;
+      }
+
+      const legacyStore = this.getLegacySessionStore();
+      if (legacyStore === undefined) {
+        return undefined;
+      }
+
+      const legacySession = legacyStore.load();
+      if (legacySession === null) {
+        this.getNotificationCoordinator()?.cancel();
+        return undefined;
+      }
+
+      const migrated = toActiveSession(legacySession);
+      return appRepository.saveActiveSession(migrated).then(() => {
+        legacyStore.clear();
+        return migrated;
+      });
+    });
   }
 
   private startTask(): void {

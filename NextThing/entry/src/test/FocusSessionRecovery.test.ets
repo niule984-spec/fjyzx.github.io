@@ -50,6 +50,18 @@ export default function focusSessionRecoveryTest() {
       expect(restored.durationSeconds).assertEqual(600);
     });
 
+    it('preserves paused remaining time when the original duration is longer', 0, () => {
+      const restored = restoreFocusSession({
+        durationSeconds: 1_500,
+        remainingSeconds: 1_225,
+        targetEndTime: 0,
+        isRunning: false
+      }, 820_000);
+
+      expect(restored.remainingSeconds).assertEqual(1_225);
+      expect(restored.isRunning).assertFalse();
+    });
+
     it('retries an interrupted result record creation without returning to running', 0, () => {
       expect(needsPendingRecord({
         taskName: '整理资料',
