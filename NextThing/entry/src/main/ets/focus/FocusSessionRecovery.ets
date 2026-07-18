@@ -11,7 +11,7 @@ export function restoreFocusSession(session: StoredFocusTimer, now: number): Foc
   const durationSeconds = Math.max(session.remainingSeconds, session.durationSeconds ?? 0);
   const storedTimer: FocusTimerState = {
     durationSeconds,
-    remainingSeconds: durationSeconds,
+    remainingSeconds: session.remainingSeconds,
     targetEndTime: session.targetEndTime,
     isRunning: session.isRunning
   };

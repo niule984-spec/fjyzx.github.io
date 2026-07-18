@@ -124,13 +124,13 @@ export class NextThingRepository {
   }
 
   async updateManualOrder(tasks: InboxTask[]): Promise<void> {
-    const store = this.getStore();
-    await store.executeSql('BEGIN TRANSACTION');
+    const store = await this.getStore();
+    store.beginTransaction();
     try {
       for (let index = 0; index < tasks.length; index++) await store.executeSql('UPDATE inbox_tasks SET sort_order = ? WHERE id = ?', [index + 1, tasks[index].id]);
-      await store.executeSql('COMMIT');
+      store.commit();
     } catch (_error) {
-      await store.executeSql('ROLLBACK');
+      store.rollBack();
       throw new Error('保存排序失败');
     }
   }
