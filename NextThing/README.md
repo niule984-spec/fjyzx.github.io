@@ -91,3 +91,24 @@ Task 5 已完成 build/install/start 验证。Task 6 已将首页文本设置为
 - 已验证提前结束进入结果页后，通知中心不再保留该通知。
 - 已验证强制停止并重启应用后，运行中的会话与通知都会恢复并重新同步。
 - 此实现使用第三方应用可用的普通常驻通知；API 24 不保证系统级实况窗或状态栏胶囊展示。
+
+## Device-side Hypium verification (2026-07-18)
+
+The pure ArkTS suites registered by `entry/src/test/List.test.ets` are executed through the `entry@ohosTest` module. RDB-backed repository suites remain excluded because they require an application database context.
+
+From `NextThing` in PowerShell, build the test HAP with:
+
+```powershell
+$hvigor = 'C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.bat'
+& $hvigor --mode module -p module=entry@ohosTest assembleHap
+```
+
+Install the current application HAP and `entry/build/default/outputs/ohosTest/entry-ohosTest-unsigned.hap`, then execute the test runner on the API 24 simulator:
+
+```powershell
+hdc -t 127.0.0.1:5555 install -r entry/build/default/outputs/default/app/entry-default.hap
+hdc -t 127.0.0.1:5555 install -r entry/build/default/outputs/ohosTest/entry-ohosTest-unsigned.hap
+hdc -t 127.0.0.1:5555 shell aa test -b com.zhaoxin.nextthing -s unittest OpenHarmonyTestRunner -m entry_test -w 30
+```
+
+Verified on `HarmonyPhone_API24` (`127.0.0.1:5555`): `Tests run: 21, Failure: 0, Error: 0, Pass: 21, Ignore: 0`.
